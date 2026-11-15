@@ -53,8 +53,8 @@ feat(db): inisialisasi proyek django dan 16 model
 ```
 
 ### 📌 Status & Rencana Selanjutnya
-* **Status Hari Ini:** Environment Python, database `si_kkpris` (16 tabel), proyek Django, seeder master data, dan unit test 16 model selesai 100%.
-* **Rencana Berikutnya:** Implementasi **Modul Autentikasi & RBAC (`AuthController`)** beserta *Base Layout UI* (Dashboard Anggota, Bendahara, dan Ketua sesuai Wireframe).
+* **Status Hari Ini:** Environment Python, database `si_kkpris` (16 tabel), proyek Django, seeder master data, unit test 16 model, serta pembakuan Peta Jalan (Roadmap) 7 Tahap Konstruksi & Pemetaan 22 Layar UI di `AGENTS.md` selesai 100%.
+* **Rencana Berikutnya (Tahap 2):** Implementasi **Modul Autentikasi & RBAC (`AuthController`)** beserta **Bentuk Awal UI Utama** (`Login.png`, `Dashboard.png` untuk Bendahara/Ketua, dan `Beranda Anggota.png`).
 
 ---
 
