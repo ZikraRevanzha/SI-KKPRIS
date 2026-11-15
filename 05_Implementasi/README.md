@@ -21,8 +21,8 @@ Folder ini merupakan direktori utama tahap **Implementasi (Konstruksi Perangkat 
 | Tahap | Fokus Modul & Controller | Halaman UI yang Dibangun (`04_Wireframe & Desain UI/01_Wireframe_Final_PNG/`) | Status |
 | :--- | :--- | :--- | :---: |
 | **Tahap 1** | **Fondasi Proyek, Database & 16 Model (3NF)** | *(Fondasi Backend, Database MySQL 8.4 & Seeder Master Data)* | ✅ **Selesai** |
-| **Tahap 2** | **Autentikasi, RBAC & Base Dashboard UI** (`AuthController`) | **Bentuk Awal UI Utama:** `Login.png`, `Dashboard.png` (Bendahara & Ketua), `Beranda Anggota.png` | ⏳ **Berikutnya** |
-| **Tahap 3** | **Manajemen Keanggotaan & Kliring Resign** (`AnggotaController`) | `Data Anggota.png`, `Form Anggota Baru.png`, `Ajukan Pengunduran Diri.png`, `Verifikasi Pengunduran Diri.png` | 📋 Terjadwal |
+| **Tahap 2** | **Autentikasi, RBAC & Base Dashboard UI** (`AuthController`) | **Bentuk Awal UI Utama:** `Login.png`, `Dashboard.png` (Bendahara & Ketua), `Beranda Anggota.png` | ✅ **Selesai** |
+| **Tahap 3** | **Manajemen Keanggotaan & Kliring Resign** (`AnggotaController`) | `Data Anggota.png`, `Form Anggota Baru.png`, `Ajukan Pengunduran Diri.png`, `Verifikasi Pengunduran Diri.png` | ⏳ **Berikutnya** |
 | **Tahap 4** | **Transaksi Multi-Simpanan Anggota** (`SimpananController`) | `Kelola Simpanan.png`, `Transaksi Baru.png` | 📋 Terjadwal |
 | **Tahap 5** | **Pembiayaan Syariah, Agunan, Approval Kas & Realisasi** (`PembiayaanController`) | `Ajukan Pembiayaan — Pilih Akad.png`, `Ajukan Pembiayaan — Nominal & Tenor.png`, `Ajukan Pembiayaan — Agunan.png`, `Daftar Pembiayaan.png`, `Detail Pembiayaan.png`, `Persetujuan Kas.png`, `Konfirmasi Persetujuan.png` | 📋 Terjadwal |
 | **Tahap 6** | **Rekap Potong Gaji (Tgl 24), Angsuran & Notifikasi** (`RekapNotifikasiController`) | `Kelola Angsuran.png`, `Rekap Potong Gaji.png`, `Notifikasi Tagihan.png` | 📋 Terjadwal |

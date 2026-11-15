@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load kkpris_tags %}
+
+{% block title %}Beranda Anggota — SI-KKPRIS{% endblock %}
+
+{% block content %}
+<!-- JUDUL HALAMAN & SUBJUDUL (Sesuai Wireframe Beranda Anggota.png) -->
+<div class="page-header-row">
+    <div>
+        <h1 class="page-title">
+            Beranda Anggota
+            {% if anggota %}— {{ anggota.nama }} ({{ anggota.no_anggota }}){% endif %}
+        </h1>
+        <p class="page-subtitle">
+            Portal Mandiri Anggota Koperasi KKPRIS SMKN 1 Kota Solok •
+            Total Akumulasi Simpanan Pribadi: <strong>{{ total_simpanan_anggota|rupiah }}</strong>
+        </p>
+    </div>
+</div>
+
+<!-- BARIS 5 KARTU SALDO SIMPANAN (Pokok, Wajib, Khusus, Hari Raya, Berencana — Sesuai Beranda Anggota.png) -->
+<div class="stats-grid-5">
+    {% for item in kartu_simpanan %}
+        <div class="stat-card">
+            <div class="stat-icon-box">{{ item.kode }}</div>
+            <div class="stat-body">
+                <div class="stat-label">{{ item.nama }}</div>
+                <div class="stat-value">{{ item.saldo|rupiah }}</div>
+                <div class="stat-meta">
+                    {% if item.dapat_ditarik %}
+                        Sukarela (Dapat Ditarik)
+                    {% else %}
+                        Terkunci (Wajib Anggota)
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- KARTU STATUS PEMBIAYAAN + PROGRESS BAR (Sesuai Wireframe Beranda Anggota.png) -->
+<div class="panel-card">
+    <div class="panel-header">
+        <span class="panel-title">Status Pembiayaan</span>
+        {% if pembiayaan_aktif %}
+            <span class="status-badge {% if pembiayaan_aktif.status == 'AKTIF' or pembiayaan_aktif.status == 'LUNAS' %}success{% elif pembiayaan_aktif.status == 'DITOLAK' %}danger{% else %}warning{% endif %}">
+                {{ pembiayaan_aktif.get_status_display }} (Antrean #{{ pembiayaan_aktif.no_antrean }})
+            </span>
+        {% else %}
+            <span class="status-badge">Tidak Ada Akad Aktif</span>
+        {% endif %}
+    </div>
+    <div class="panel-body">
+        {% if pembiayaan_aktif %}
+            <div class="financing-summary-grid">
+                <div class="financing-kv">
+                    <span class="financing-kv-label">Akad</span>
+                    <span class="financing-kv-val">{{ pembiayaan_aktif.jenis_akad.get_nama_display }} ({{ pembiayaan_aktif.no_pembiayaan }})</span>
+                </div>
+                <div class="financing-kv">
+                    <span class="financing-kv-label">Sisa Pembiayaan</span>
+                    <span class="financing-kv-val">{{ sisa_kewajiban|rupiah }}</span>
+                </div>
+                <div class="financing-kv">
+                    <span class="financing-kv-label">Angsuran/Bulan</span>
+                    <span class="financing-kv-val">{{ pembiayaan_aktif.angsuran_bulanan|rupiah }}</span>
+                </div>
+            </div>
+
+            <div>
+                <div style="display:flex; justify-content:space-between; font-size:12.5px; color:var(--text-secondary); margin-bottom:8px;">
+                    <span>Progress Pelunasan Angsuran ({{ angsuran_lunas_count }} dari {{ total_tenor }} bulan)</span>
+                    <strong>{{ progress_persen }}%</strong>
+                </div>
+                <div class="progress-track" style="height: 12px;">
+                    <div class="progress-fill brand" style="width: {{ progress_persen }}%;"></div>
+                </div>
+            </div>
+        {% else %}
+            <p style="font-size:13px; color:var(--text-muted);">
+                Anda belum memiliki kontrak pembiayaan syariah aktif saat ini. Pengajuan pembiayaan dibuka setiap tanggal 1 s.d. 20 setiap bulannya.
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- TABEL RIWAYAT TERAKHIR (Sesuai Wireframe Beranda Anggota.png) -->
+<div class="panel-card" style="margin-bottom: 0;">
+    <div class="panel-header">
+        <span class="panel-title">Riwayat Terakhir</span>
+        <span class="status-badge">Mutasi Simpanan &amp; Angsuran</span>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tanggal</th>
+                    <th>Jenis</th>
+                    <th>Keterangan</th>
+                    <th>Jumlah</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in riwayat_terakhir %}
+                    <tr>
+                        <td>{{ row.tanggal|date:"d/m/Y H:i" }}</td>
+                        <td><strong>{{ row.jenis }}</strong></td>
+                        <td>{{ row.keterangan }}</td>
+                        <td><strong>{{ row.jumlah|rupiah }}</strong></td>
+                        <td>
+                            <span class="status-badge {{ row.tipe_badge }}">{{ row.status }}</span>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px;">
+                            Belum ada riwayat transaksi simpanan maupun pembayaran angsuran.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+

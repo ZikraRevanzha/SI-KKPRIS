@@ -239,3 +239,41 @@ class SIKKPRISModelsTestCase(TestCase):
         self.anggota.refresh_from_db()
         self.assertEqual(self.anggota.status, StatusAnggotaChoices.PROSES_RESIGN)
         self.assertEqual(resign.total_kewajiban_pembiayaan, Decimal('79200000.00'))
+
+    def test_04_auth_controller_rbac_dan_dashboard_ui(self):
+        # 1. Akses tanpa login diarahkan ke /login/
+        resp = self.client.get('/dashboard/')
+        self.assertRedirects(resp, '/login/')
+
+        # 2. Login Bendahara & akses Dashboard Pengurus
+        resp_login_bendahara = self.client.post(
+            '/login/',
+            {'username': 'bendahara', 'password': 'Kkpris2026!'},
+            follow=True,
+        )
+        self.assertEqual(resp_login_bendahara.status_code, 200)
+        self.assertContains(resp_login_bendahara, 'Total Anggota')
+        self.assertContains(resp_login_bendahara, 'Tren Simpanan')
+
+        # 3. Proteksi RBAC: Bendahara mencoba akses /beranda/ milik Anggota -> ditolak & diarahkan ke /dashboard/
+        resp_forbidden = self.client.get('/beranda/', follow=True)
+        self.assertContains(resp_forbidden, 'Akses ditolak')
+
+        # 4. Logout Bendahara
+        self.client.get('/logout/')
+
+        # 5. Login Anggota menggunakan Nomor Anggota (KKP-2026-001) & akses Beranda Anggota
+        resp_login_anggota = self.client.post(
+            '/login/',
+            {'username': 'KKP-2026-001', 'password': 'Kkpris2026!'},
+            follow=True,
+        )
+        self.assertEqual(resp_login_anggota.status_code, 200)
+        self.assertContains(resp_login_anggota, 'Beranda Anggota')
+        self.assertContains(resp_login_anggota, 'Status Pembiayaan')
+        self.assertContains(resp_login_anggota, 'Riwayat Terakhir')
+
+        # 6. Proteksi RBAC: Anggota mencoba akses /dashboard/ pengurus -> ditolak & diarahkan ke /beranda/
+        resp_anggota_forbidden = self.client.get('/dashboard/', follow=True)
+        self.assertContains(resp_anggota_forbidden, 'Akses ditolak')
+

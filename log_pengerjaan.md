@@ -10,7 +10,8 @@
 ## 📅 15 November 2026
 
 ### 🎯 Fokus / Tahapan Pengerjaan
-* Penyiapan *Virtual Environment* (`venv`) Python & `requirements.txt`, pembuatan basis data `si_kkpris` pada MySQL 8.4 Laragon, serta inisialisasi proyek Django `si_kkpris` dan aplikasi `koperasi` beserta ke-16 Model tabel (3NF), seeder master data, dan unit test.
+* **Tahap 1:** Penyiapan *Virtual Environment* (`venv`) Python & `requirements.txt`, pembuatan basis data `si_kkpris` pada MySQL 8.4 Laragon, serta inisialisasi proyek Django `si_kkpris` dan aplikasi `koperasi` beserta ke-16 Model tabel (3NF), seeder master data, dan unit test.
+* **Tahap 2:** Implementasi Modul Autentikasi, RBAC, Session Timeout, & Pencatatan `AuditTrailLog` (`AuthController` — `UC-01`) beserta **Bentuk Awal UI Utama** (`Login.png`, `Dashboard.png` Bendahara & Ketua, serta `Beranda Anggota.png`).
 
 ### 🛠️ Rincian Perubahan
 1. **Penyiapan Virtual Environment & Pustaka (`05_Implementasi/venv/` & `requirements.txt`):**
@@ -40,21 +41,26 @@
      16. `AuditTrailLog` (`audit_trail_log`)
    * Mendaftarkan ke-16 model pada `koperasi/admin.py` dengan proteksi *append-only* pada `AuditTrailLog`.
 4. **Pembuatan Seeder Master Data & Unit Test:**
-   * Membuat command `python manage.py seed_master` (`koperasi/management/commands/seed_master.py`) untuk menginisialisasi 5 skema simpanan, 3 skema akad syariah (*Murabahah, Ijarah, Hawalah*), dan 3 akun peran utama (`ketua`, `bendahara`, `198205142009012004`).
-   * Menambahkan dan menjalankan *unit test* terintegrasi di `koperasi/tests.py` (3 skenario pengujian melewati seluruh 16 tabel — **OK**).
+   * Membuat command `python manage.py seed_master` (`koperasi/management/commands/seed_master.py`) untuk menginisialisasi 5 skema simpanan, 3 skema akad syariah (*Murabahah, Ijarah, Hawalah*), dan 3 akun peran utama (`ketua`, `bendahara`, `198205142009012004`) beserta opsi `--with-demo`.
+   * Menambahkan dan menjalankan *unit test* terintegrasi di `koperasi/tests.py` (4 skenario pengujian melewati seluruh 16 tabel & RBAC — **OK**).
+5. **Implementasi Tahap 2: `AuthController`, RBAC & Bentuk Awal UI Utama:**
+   * Membangun `koperasi/controllers/auth_controller.py` (`AuthController.login`, `AuthController.logout`, `AuthController.gantiPassword`, dekorator `@login_wajib` & `@peran_wajib`, serta pencatatan otomatis `AuditTrailLog`).
+   * Membuat filter pemformatan mata uang Rupiah berbasis `Decimal` di `koperasi/templatetags/kkpris_tags.py`.
+   * Membangun *Design System* (`static/css/style.css`), *Base Layout* (`templates/base.html`), dan 3 layar utama sesuai Wireframe Final:
+     * `templates/auth/login.html` (`Login.png`)
+     * `templates/dashboard/dashboard_pengurus.html` (`Dashboard.png` — Bendahara & Ketua)
+     * `templates/dashboard/beranda_anggota.html` (`Beranda Anggota.png` — Portal Mandiri Anggota)
 
 ### 💬 Pesan Commit Terkait
 ```text
 feat(db): inisialisasi proyek django dan 16 model
-
-- Siapkan venv, requirements.txt, dan konfigurasi koneksi MySQL 8.4 si_kkpris
-- Implementasikan 16 model 3NF dengan Decimal(15,2) dan method sesuai class diagram
-- Tambah command seed_master serta unit test validasi aturan bisnis utama
+docs(config): simpan peta jalan 7 tahap dan pemetaan ui
+feat(auth): tambah modul autentikasi rbac dan dashboard ui
 ```
 
 ### 📌 Status & Rencana Selanjutnya
-* **Status Hari Ini:** Environment Python, database `si_kkpris` (16 tabel), proyek Django, seeder master data, unit test 16 model, serta pembakuan Peta Jalan (Roadmap) 7 Tahap Konstruksi & Pemetaan 22 Layar UI di `AGENTS.md` selesai 100%.
-* **Rencana Berikutnya (Tahap 2):** Implementasi **Modul Autentikasi & RBAC (`AuthController`)** beserta **Bentuk Awal UI Utama** (`Login.png`, `Dashboard.png` untuk Bendahara/Ketua, dan `Beranda Anggota.png`).
+* **Status Hari Ini:** **Tahap 1** (Fondasi & 16 Model) dan **Tahap 2** (`AuthController`, RBAC 3 Peran, & Bentuk Awal UI Login + Dashboard Pengurus + Beranda Anggota) selesai 100%.
+* **Rencana Berikutnya (Tahap 3):** Implementasi **Manajemen Keanggotaan & Kliring Resign (`AnggotaController` — `UC-02` s.d. `UC-04`)** beserta 4 halaman UI (`Data Anggota.png`, `Form Anggota Baru.png`, `Ajukan Pengunduran Diri.png`, dan `Verifikasi Pengunduran Diri.png`).
 
 ---
 

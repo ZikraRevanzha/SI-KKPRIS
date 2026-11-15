@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load kkpris_tags %}
+
+{% block title %}Dashboard {{ request.pengguna.get_peran_display }} — SI-KKPRIS{% endblock %}
+
+{% block content %}
+<!-- HEADER HALAMAN + AKSI KANAN ATAS (Sesuai Wireframe Dashboard.png) -->
+<div class="page-header-row">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">
+            {% if request.pengguna.peran == 'KETUA' %}
+                Panel Eksekutif Ketua Koperasi — Pemantauan Likuiditas, Otorisasi Pengeluaran Kas &amp; Jejak Audit
+            {% else %}
+                Ringkasan Operasional Keuangan, Simpanan, Pembiayaan Syariah &amp; Rekap Gaji KKPRIS SMKN 1 Kota Solok
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="page-actions">
+        <a href="{% url 'laporan_keuangan' %}" class="btn btn-outline">
+            Ekspor
+        </a>
+        {% if request.pengguna.peran == 'BENDAHARA' %}
+            <a href="{% url 'kelola_simpanan' %}" class="btn btn-primary-dark">
+                + Transaksi
+            </a>
+        {% elif request.pengguna.peran == 'KETUA' %}
+            <a href="{% url 'persetujuan_kas' %}" class="btn btn-primary-dark">
+                Persetujuan Kas ({{ menunggu_approval_ketua }})
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- BARIS 4 KARTU STATISTIK (Sesuai Wireframe Dashboard.png) -->
+<div class="stats-grid-4">
+    <!-- Kartu #1: Total Anggota -->
+    <div class="stat-card">
+        <div class="stat-icon-box">👥</div>
+        <div class="stat-body">
+            <div class="stat-label">Total Anggota</div>
+            <div class="stat-value">{{ total_anggota_aktif }} Anggota</div>
+            <div class="stat-meta">Aktif dari {{ total_seluruh_anggota }} terdaftar</div>
+        </div>
+    </div>
+
+    <!-- Kartu #2: Total Simpanan -->
+    <div class="stat-card">
+        <div class="stat-icon-box">◈</div>
+        <div class="stat-body">
+            <div class="stat-label">Total Simpanan</div>
+            <div class="stat-value">{{ total_simpanan|rupiah }}</div>
+            <div class="stat-meta">Akumulasi 5 skema simpanan</div>
+        </div>
+    </div>
+
+    <!-- Kartu #3: Pembiayaan Aktif -->
+    <div class="stat-card">
+        <div class="stat-icon-box">▤</div>
+        <div class="stat-body">
+            <div class="stat-label">Pembiayaan Aktif</div>
+            <div class="stat-value">{{ sisa_tagihan_aktif|rupiah }}</div>
+            <div class="stat-meta">{{ jumlah_pembiayaan_aktif }} akad berjalan • {{ menunggu_approval_ketua }} antrean</div>
+        </div>
+    </div>
+
+    <!-- Kartu #4: Kas Hari Ini -->
+    <div class="stat-card">
+        <div class="stat-icon-box">Rp</div>
+        <div class="stat-body">
+            <div class="stat-label">Kas Hari Ini</div>
+            <div class="stat-value">{{ kas_hari_ini|rupiah }}</div>
+            <div class="stat-meta">Penerimaan simpanan &amp; angsuran</div>
+        </div>
+    </div>
+</div>
+
+<!-- BARIS 2 PANEL GRAFIK (Tren Simpanan & Distribusi Akad — Sesuai Wireframe Dashboard.png) -->
+<div class="charts-row">
+    <!-- Panel Kiri: Tren Simpanan (Perbandingan 5 Skema Simpanan) -->
+    <div class="panel-card" style="margin-bottom: 0;">
+        <div class="panel-header">
+            <span class="panel-title">Tren Simpanan</span>
+            <span class="status-badge">5 Skema Simpanan Anggota</span>
+        </div>
+        <div class="panel-body">
+            <div class="chart-canvas-box">
+                <div class="bar-chart-grid">
+                    {% for item in rincian_jenis_simpanan %}
+                        <div class="bar-col">
+                            <span class="bar-amount">{{ item.saldo|rupiah }}</span>
+                            <div
+                                class="bar-fill {% if item.dapat_ditarik %}secondary{% endif %}"
+                                style="height: {{ item.tinggi_persen }}%;"
+                                title="{{ item.nama }}: {{ item.saldo|rupiah }}"
+                            ></div>
+                            <span class="bar-label">{{ item.kode }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-muted); margin-top:12px; padding-top:10px; border-top:1px dashed var(--border-color);">
+                    <span>■ Hijau: Simpanan Terkunci (Pokok, Wajib, Khusus)</span>
+                    <span>■ Abu-abu: Simpanan Sukarela (Hari Raya, Berencana)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel Kanan: Distribusi Akad (Murabahah, Ijarah, Hawalah) -->
+    <div class="panel-card" style="margin-bottom: 0;">
+        <div class="panel-header">
+            <span class="panel-title">Distribusi Akad</span>
+            <span class="status-badge">Margin Flat</span>
+        </div>
+        <div class="panel-body">
+            <div class="chart-canvas-box" style="justify-content: center;">
+                <div class="akad-list">
+                    {% for akad in distribusi_akad %}
+                        <div>
+                            <div class="akad-row-header">
+                                <span>{{ akad.label }}</span>
+                                <span>{{ akad.jumlah }} Akad ({{ akad.nominal|rupiah }})</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill brand" style="width: {% if akad.persen > 0 %}{{ akad.persen }}{% else %}8{% endif %}%;"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div style="margin-top: 18px; font-size: 12px; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                    Batas plafon tanpa agunan: <strong>Rp 70.000.000</strong> • Tenor maks: <strong>72 Bulan</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PANEL BAWAH: AKTIVITAS TERBARU (Sesuai Wireframe Dashboard.png) -->
+<div class="panel-card" style="margin-top: 22px; margin-bottom: 0;">
+    <div class="panel-header">
+        <span class="panel-title">Aktivitas Terbaru</span>
+        <span class="status-badge">Audit Trail Real-Time</span>
+    </div>
+    <div class="activity-list">
+        {% for log in aktivitas_terbaru %}
+            <div class="activity-item">
+                <div class="activity-left">
+                    <div class="stat-icon-box" style="width:32px; height:32px; font-size:11px;">
+                        {{ forloop.counter }}
+                    </div>
+                    <div>
+                        <div class="activity-title">{{ log.detail_perubahan }}</div>
+                        <div class="activity-sub">
+                            Oleh: <strong>{{ log.pengguna.nama_lengkap }}</strong> ({{ log.pengguna.peran }}) •
+                            Tabel: <code>{{ log.nama_tabel }}</code> •
+                            Waktu: {{ log.created_at|date:"d/m/Y H:i:s" }} WIB • IP: {{ log.ip_address }}
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <span class="status-badge {% if 'GAGAL' in log.aksi or 'DITOLAK' in log.aksi %}danger{% else %}success{% endif %}">
+                        {{ log.aksi }}
+                    </span>
+                </div>
+            </div>
+        {% empty %}
+            <div class="activity-item">
+                <span class="activity-sub">Belum ada aktivitas tercatat hari ini.</span>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+

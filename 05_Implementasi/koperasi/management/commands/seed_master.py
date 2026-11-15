@@ -3,6 +3,7 @@ Management command untuk mengisi Master Data awal SI-KKPRIS sesuai SRS v4.0:
 - 5 Skema Simpanan (Pokok, Khusus, Wajib, Hari Raya, Berencana)
 - 3 Skema Akad Syariah (Murabahah, Ijarah, Hawalah)
 - 3 Akun Peran Utama (KETUA, BENDAHARA, ANGGOTA)
+- Opsi --with-demo: mengisi contoh transaksi simpanan & pembiayaan untuk tampilan Dashboard UI
 """
 
 from datetime import date
@@ -12,19 +13,38 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from koperasi.models import (
     Anggota,
+    AuditTrailLog,
+    JadwalAngsuran,
     JenisAkad,
     JenisSimpanan,
+    JenisTransaksiSimpananChoices,
+    KeputusanOtorisasiChoices,
+    MetodeBayarChoices,
     MetodeMarginChoices,
+    MetodePencairanChoices,
     NamaAkadChoices,
+    PembayaranAngsuran,
+    Pembiayaan,
     Pengguna,
     PeranPenggunaChoices,
+    PersetujuanPembiayaan,
+    RealisasiPencairan,
     StatusAnggotaChoices,
     StatusKepegawaianChoices,
+    StatusPembiayaanChoices,
+    TransaksiSimpanan,
 )
 
 
 class Command(BaseCommand):
     help = 'Inisialisasi data master (5 Jenis Simpanan, 3 Jenis Akad Syariah, dan 3 Akun Peran) pada database si_kkpris'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--with-demo',
+            action='store_true',
+            help='Tambahkan contoh mutasi simpanan & pembiayaan syariah untuk pratinjau Dashboard UI',
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -142,7 +162,7 @@ class Command(BaseCommand):
             },
         )
 
-        Anggota.objects.update_or_create(
+        anggota_budi, _ = Anggota.objects.update_or_create(
             pengguna=user_anggota,
             defaults={
                 'no_anggota': 'KKP-2026-001',
@@ -161,3 +181,85 @@ class Command(BaseCommand):
             )
         )
 
+        if options.get('with_demo') and not TransaksiSimpanan.objects.filter(anggota=anggota_budi).exists():
+            peta_js = {js.kode: js for js in JenisSimpanan.objects.all()}
+            demo_setoran = [
+                ('KUI-DEMO-001', 'SPK', Decimal('350000.00'), 'TUNAI', 'Setoran lunas Simpanan Pokok anggota'),
+                ('KUI-DEMO-002', 'SKH', Decimal('500000.00'), 'TUNAI', 'Setoran lunas Simpanan Khusus anggota'),
+                ('KUI-DEMO-003', 'SWJ', Decimal('1800000.00'), 'POTONG_GAJI', 'Akumulasi Simpanan Wajib 12 bulan'),
+                ('KUI-DEMO-004', 'SHR', Decimal('750000.00'), 'POTONG_GAJI', 'Tabungan Simpanan Hari Raya Idul Fitri'),
+                ('KUI-DEMO-005', 'SBR', Decimal('1200000.00'), 'TRANSFER', 'Setoran Simpanan Berencana Pendidikan'),
+            ]
+            for no_kui, kode_js, nom, metode, ket in demo_setoran:
+                TransaksiSimpanan.simpanMutasiSimpanan({
+                    'anggota_id': anggota_budi.id,
+                    'jenis_simpanan_id': peta_js[kode_js].id,
+                    'bendahara_id': bendahara.id,
+                    'no_kuitansi': no_kui,
+                    'jenis_transaksi': JenisTransaksiSimpananChoices.SETOR,
+                    'metode_bayar': metode,
+                    'nominal': nom,
+                    'keterangan': ket,
+                })
+
+            akad_mrb = JenisAkad.objects.get(kode='AKD-MRB')
+            pmb = Pembiayaan.simpanPengajuanBaru({
+                'no_pembiayaan': 'PMB-2026-001',
+                'anggota_id': anggota_budi.id,
+                'jenis_akad_id': akad_mrb.id,
+                'tanggal_pengajuan': date(2026, 7, 10),
+                'harga_pokok': Decimal('24000000.00'),
+                'margin_persen': Decimal('1.00'),
+                'tenor_bulan': 12,
+                'no_antrean': 1,
+                'tujuan_pembiayaan': 'Pengadaan Laptop & Perangkat Pembelajaran',
+            })
+            PersetujuanPembiayaan.simpanKeputusanOtorisasi(
+                pembiayaan_id=pmb.id,
+                pejabat_id=ketua.id,
+                keputusan=KeputusanOtorisasiChoices.DISETUJUI,
+                catatan='Otorisasi pengeluaran kas disetujui Ketua Koperasi.',
+                level_persetujuan=2,
+            )
+            Pembiayaan.perbaruiStatusPembiayaan(pmb.id, StatusPembiayaanChoices.DISETUJUI_KETUA)
+            RealisasiPencairan.simpanRealisasiPencairan(pmb.id, {
+                'bendahara_id': bendahara.id,
+                'tanggal_realisasi': date(2026, 7, 12),
+                'metode_pencairan': MetodePencairanChoices.TRANSFER_BANK,
+                'nomor_referensi_bank': 'BNI-SOLOK-20260712',
+                'nominal_cair': Decimal('24000000.00'),
+                'bukti_transfer_url': 'media/pencairan/bukti_pmb_001.pdf',
+            })
+            Pembiayaan.perbaruiStatusPembiayaan(pmb.id, StatusPembiayaanChoices.AKTIF, tanggal_cair=date(2026, 7, 12))
+            JadwalAngsuran.generateJadwalAngsuran(
+                pembiayaan_id=pmb.id,
+                tenor_bulan=12,
+                porsi_pokok=Decimal('2000000.00'),
+                porsi_margin=Decimal('240000.00'),
+                tanggal_mulai=date(2026, 7, 12),
+            )
+            for ke in range(1, 5):
+                jadwal_ke = JadwalAngsuran.objects.get(pembiayaan=pmb, angsuran_ke=ke)
+                PembayaranAngsuran.simpanPembayaranAngsuran(jadwal_ke.id, {
+                    'bendahara_id': bendahara.id,
+                    'no_kuitansi': f'KUI-ANG-2026-00{ke}',
+                    'nominal_bayar': Decimal('2240000.00'),
+                    'metode_bayar': MetodeBayarChoices.POTONG_GAJI,
+                    'nomor_referensi': f'RKP-2026-{ke + 7:02d}',
+                })
+
+            AuditTrailLog.catatLogAudit(
+                pengguna_id=bendahara.id,
+                aksi='SEED_DATA_AWAL',
+                nama_tabel='transaksi_simpanan',
+                record_id=anggota_budi.id,
+                detail='Inisialisasi saldo 5 skema simpanan & pembiayaan Murabahah anggota KKP-2026-001.',
+            )
+            AuditTrailLog.catatLogAudit(
+                pengguna_id=ketua.id,
+                aksi='OTORISASI_KAS_KETUA',
+                nama_tabel='persetujuan_pembiayaan',
+                record_id=pmb.id,
+                detail='Persetujuan pengeluaran kas pembiayaan PMB-2026-001 (Rp 24.000.000).',
+            )
+            self.stdout.write(self.style.SUCCESS('[OK] Data contoh transaksi & pembiayaan berhasil ditambahkan.'))
