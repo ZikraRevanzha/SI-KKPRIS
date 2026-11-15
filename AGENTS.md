@@ -80,3 +80,4 @@ Bertindaklah sebagai **Senior Software Engineer** yang ahli dalam standar **Conv
     * Pengajuan Pembiayaan Syariah (*Murabahah, Ijarah, Hawalah*) hanya dibuka tanggal 1–20, tenor maks. 72 bulan, margin flat, dan wajib unggah agunan jika plafon > Rp70.000.000.
     * Otorisasi pengeluaran kas wajib disetujui Ketua (*Two-Man Rule*) sebelum Bendahara mencatat realisasi pencairan *off-system*.
     * Rekap potong gaji di-generate setiap tanggal 24 dan dapat diekspor ke Excel (`.xlsx`) & PDF.
+
