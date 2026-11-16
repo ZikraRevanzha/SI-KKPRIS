@@ -3,7 +3,7 @@ URL Routing Aplikasi Koperasi SI-KKPRIS.
 """
 
 from django.urls import path
-from koperasi.controllers import auth_controller
+from koperasi.controllers import anggota_controller, auth_controller
 
 urlpatterns = [
     # Root & Autentikasi (Tahap 2 — UC-01)
@@ -16,19 +16,23 @@ urlpatterns = [
     path('dashboard/', auth_controller.dashboard_pengurus_view, name='dashboard_pengurus'),
     path('beranda/', auth_controller.beranda_anggota_view, name='beranda_anggota'),
 
-    # Rute Menu Sidebar untuk Tahap 3 s.d. Tahap 7 (Akan diaktifkan penuh per tahapan)
+    # Manajemen Keanggotaan & Kliring Pengunduran Diri (Tahap 3 — UC-05, UC-08, UC-09)
+    path('anggota/', anggota_controller.data_anggota_view, name='data_anggota'),
+    path('anggota/tambah/', anggota_controller.tambah_anggota_view, name='tambah_anggota'),
+    path('anggota/<int:anggota_id>/edit/', anggota_controller.edit_anggota_view, name='edit_anggota'),
+    path('pengunduran-diri/', anggota_controller.pengunduran_diri_router_view, name='pengunduran_diri'),
     path(
-        'anggota/',
-        auth_controller.modul_terjadwal_view,
-        {'nama_modul': 'Data Anggota', 'tahap': 3},
-        name='data_anggota',
+        'anggota/verifikasi-resign/',
+        anggota_controller.verifikasi_pengunduran_diri_view,
+        name='verifikasi_pengunduran_diri',
     ),
     path(
-        'pengunduran-diri/',
-        auth_controller.modul_terjadwal_view,
-        {'nama_modul': 'Pengunduran Diri', 'tahap': 3},
-        name='pengunduran_diri',
+        'anggota/verifikasi-resign/<int:pengunduran_id>/proses/',
+        anggota_controller.proses_verifikasi_resign_view,
+        name='proses_verifikasi_resign',
     ),
+
+    # Rute Menu Sidebar untuk Tahap 4 s.d. Tahap 7 (Akan diaktifkan penuh per tahapan)
     path(
         'simpanan/',
         auth_controller.modul_terjadwal_view,
@@ -72,4 +76,3 @@ urlpatterns = [
         name='laporan_keuangan',
     ),
 ]
-

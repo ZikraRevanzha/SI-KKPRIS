@@ -303,3 +303,108 @@ class SIKKPRISModelsTestCase(TestCase):
         self.assertTemplateUsed(resp_login, 'auth/login.html')
         self.assertContains(resp_login, 'css/style.css')
 
+    def test_06_anggota_controller_dan_kliring_resign_tahap_3(self):
+        """Menguji fitur Tahap 3: Data Anggota, Form Anggota Baru, Ajukan & Verifikasi Resign."""
+        # 1. Login sebagai Bendahara & buka halaman Data Anggota (WD-03 & WD-04)
+        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+        resp_list = self.client.get('/anggota/')
+        self.assertEqual(resp_list.status_code, 200)
+        self.assertTemplateUsed(resp_list, 'anggota/data_anggota.html')
+        self.assertContains(resp_list, 'Form Anggota Baru')
+        self.assertContains(resp_list, 'KKP-2026-001')
+
+        # 2. Tambah Anggota Baru oleh Bendahara (Setor Lunas Simpanan Pokok Rp350.000 & Khusus Rp500.000)
+        resp_tambah = self.client.post(
+            '/anggota/tambah/',
+            {
+                'nama': 'Rina Marlina, S.Pd.',
+                'nik': '1372019988770009',
+                'no_anggota': 'KKP-2026-009',
+                'status_kepegawaian': 'PNS',
+                'masa_dinas_tahun': 8,
+                'no_hp': '081299887766',
+                'tanggal_masuk': '2026-11-16',
+                'cicilan_simpanan_pokok': 'LUNAS_AWAL',
+                'cicilan_simpanan_khusus': 'LUNAS_AWAL',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_tambah.status_code, 200)
+        anggota_rina = Anggota.objects.get(no_anggota='KKP-2026-009')
+        self.assertEqual(anggota_rina.nama, 'Rina Marlina, S.Pd.')
+        self.assertEqual(
+            TransaksiSimpanan.hitungTotalSimpananAnggota(anggota_rina.id),
+            Decimal('850000.00'),
+        )
+
+        # 3. Edit Profil Anggota oleh Bendahara
+        resp_edit = self.client.post(
+            f'/anggota/{anggota_rina.id}/edit/',
+            {
+                'nama': 'Rina Marlina, S.Pd., M.Pd.',
+                'nik': '1372019988770009',
+                'status_kepegawaian': 'PNS',
+                'masa_dinas_tahun': 9,
+                'no_hp': '081299887700',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_edit.status_code, 200)
+        anggota_rina.refresh_from_db()
+        self.assertEqual(anggota_rina.nama, 'Rina Marlina, S.Pd., M.Pd.')
+        self.assertEqual(anggota_rina.masa_dinas_tahun, 9)
+
+        # 4. Logout Bendahara, Login sebagai Anggota Rina & Ajukan Pengunduran Diri (WD-22)
+        self.client.get('/logout/')
+        self.client.post('/login/', {'username': 'KKP-2026-009', 'password': 'Kkpris2026!'})
+
+        resp_form_resign = self.client.get('/pengunduran-diri/')
+        self.assertEqual(resp_form_resign.status_code, 200)
+        self.assertTemplateUsed(resp_form_resign, 'anggota/ajukan_pengunduran_diri.html')
+        self.assertContains(
+            resp_form_resign,
+            'Total simpanan dikurangi sisa pembiayaan akan dihitung oleh Bendahara',
+        )
+
+        resp_submit_resign = self.client.post(
+            '/pengunduran-diri/',
+            {
+                'alasan': 'Pindah Tugas / Mutasi Sekolah',
+                'keterangan': 'Mutasi ke SMKN 2 Padang TMT Desember 2026',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_submit_resign.status_code, 200)
+        anggota_rina.refresh_from_db()
+        self.assertEqual(anggota_rina.status, StatusAnggotaChoices.PROSES_RESIGN)
+
+        resign_obj = PengunduranDiri.objects.get(anggota=anggota_rina)
+        self.assertEqual(resign_obj.total_hak_simpanan, Decimal('850000.00'))
+        self.assertEqual(resign_obj.total_kewajiban_pembiayaan, Decimal('0.00'))
+        self.assertEqual(resign_obj.selisih_akhir, Decimal('850000.00'))
+
+        # 5. Logout Anggota, Login Bendahara & Verifikasi Kliring Pengunduran Diri (WD-17)
+        self.client.get('/logout/')
+        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+
+        resp_verif_page = self.client.get(f'/anggota/verifikasi-resign/?pilih={resign_obj.id}')
+        self.assertEqual(resp_verif_page.status_code, 200)
+        self.assertTemplateUsed(resp_verif_page, 'anggota/verifikasi_pengunduran_diri.html')
+        self.assertContains(resp_verif_page, 'Dikembalikan ke anggota / Disetor anggota')
+
+        resp_verif_post = self.client.post(
+            f'/anggota/verifikasi-resign/{resign_obj.id}/proses/',
+            {'keputusan': 'VERIFIKASI'},
+            follow=True,
+        )
+        self.assertEqual(resp_verif_post.status_code, 200)
+
+        resign_obj.refresh_from_db()
+        anggota_rina.refresh_from_db()
+        anggota_rina.pengguna.refresh_from_db()
+        self.assertEqual(resign_obj.status_pengajuan, 'DISETUJUI_KELUAR')
+        self.assertEqual(resign_obj.status_kliring, 'SELESAI_KLIRING')
+        self.assertEqual(anggota_rina.status, StatusAnggotaChoices.NON_AKTIF_KELUAR)
+        self.assertFalse(anggota_rina.pengguna.is_aktif)
+
+

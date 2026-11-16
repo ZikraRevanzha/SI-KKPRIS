@@ -22,8 +22,8 @@ Folder ini merupakan direktori utama tahap **Implementasi (Konstruksi Perangkat 
 | :--- | :--- | :--- | :---: |
 | **Tahap 1** | **Fondasi Proyek, Database & 16 Model (3NF)** | *(Fondasi Backend, Database MySQL 8.4 & Seeder Master Data)* | ✅ **Selesai** |
 | **Tahap 2** | **Autentikasi, RBAC & Base Dashboard UI** (`AuthController`) | **Bentuk Awal UI Utama:** `Login.png`, `Dashboard.png` (Bendahara & Ketua), `Beranda Anggota.png` | ✅ **Selesai** |
-| **Tahap 3** | **Manajemen Keanggotaan & Kliring Resign** (`AnggotaController`) | `Data Anggota.png`, `Form Anggota Baru.png`, `Ajukan Pengunduran Diri.png`, `Verifikasi Pengunduran Diri.png` | ⏳ **Berikutnya** |
-| **Tahap 4** | **Transaksi Multi-Simpanan Anggota** (`SimpananController`) | `Kelola Simpanan.png`, `Transaksi Baru.png` | 📋 Terjadwal |
+| **Tahap 3** | **Manajemen Keanggotaan & Kliring Resign** (`AnggotaController`) | `Data Anggota.png`, `Form Anggota Baru.png`, `Ajukan Pengunduran Diri.png`, `Verifikasi Pengunduran Diri.png` | ✅ **Selesai** |
+| **Tahap 4** | **Transaksi Multi-Simpanan Anggota** (`SimpananController`) | `Kelola Simpanan.png`, `Transaksi Baru.png` | ⏳ **Berikutnya** |
 | **Tahap 5** | **Pembiayaan Syariah, Agunan, Approval Kas & Realisasi** (`PembiayaanController`) | `Ajukan Pembiayaan — Pilih Akad.png`, `Ajukan Pembiayaan — Nominal & Tenor.png`, `Ajukan Pembiayaan — Agunan.png`, `Daftar Pembiayaan.png`, `Detail Pembiayaan.png`, `Persetujuan Kas.png`, `Konfirmasi Persetujuan.png` | 📋 Terjadwal |
 | **Tahap 6** | **Rekap Potong Gaji (Tgl 24), Angsuran & Notifikasi** (`RekapNotifikasiController`) | `Kelola Angsuran.png`, `Rekap Potong Gaji.png`, `Notifikasi Tagihan.png` | 📋 Terjadwal |
 | **Tahap 7** | **Kuitansi Digital, Laporan Keuangan (RAT) & Final QA** (`LaporanBuktiController`) | `Cetak Bukti Transaksi.png`, `Cetak Bukti Pembayaran.png`, `Laporan Keuangan.png` | 📋 Terjadwal |
@@ -37,7 +37,8 @@ Folder ini merupakan direktori utama tahap **Implementasi (Konstruksi Perangkat 
 ├── backend/                             # Seluruh Kode Backend Django (MVT Logic, 16 Model, Test)
 │   ├── koperasi/                        # Aplikasi Inti SI-KKPRIS
 │   │   ├── controllers/
-│   │   │   └── auth_controller.py       # AuthController, RBAC & Dashboard Views (Tahap 2)
+│   │   │   ├── auth_controller.py          # AuthController, RBAC & Dashboard Views (Tahap 2)
+│   │   │   └── anggota_controller.py       # AnggotaController & Kliring Resign Views (Tahap 3)
 │   │   ├── management/commands/
 │   │   │   └── seed_master.py           # Seeder 5 Jenis Simpanan, 3 Akad & 3 Akun Peran
 │   │   ├── migrations/
@@ -66,6 +67,7 @@ Folder ini merupakan direktori utama tahap **Implementasi (Konstruksi Perangkat 
 │   └── templates/                       # Template Antarmuka HTML Django (22 Wireframe Final)
 │       ├── base.html
 │       ├── auth/login.html
+│       ├── anggota/                     # Data Anggota, Form Anggota Baru, & Kliring Resign (Tahap 3)
 │       └── dashboard/
 ├── venv/                                # Python Virtual Environment (Lokal, tidak di-commit)
 └── README.md                            # Dokumentasi Panduan Folder Implementasi

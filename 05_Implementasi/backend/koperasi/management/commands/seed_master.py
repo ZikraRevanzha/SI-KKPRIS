@@ -26,6 +26,7 @@ from koperasi.models import (
     PembayaranAngsuran,
     Pembiayaan,
     Pengguna,
+    PengunduranDiri,
     PeranPenggunaChoices,
     PersetujuanPembiayaan,
     RealisasiPencairan,
@@ -262,4 +263,93 @@ class Command(BaseCommand):
                 record_id=pmb.id,
                 detail='Persetujuan pengeluaran kas pembiayaan PMB-2026-001 (Rp 24.000.000).',
             )
-            self.stdout.write(self.style.SUCCESS('[OK] Data contoh transaksi & pembiayaan berhasil ditambahkan.'))
+
+        if options.get('with_demo') and not Anggota.objects.filter(no_anggota='KKP-2026-002').exists():
+            peta_js = {js.kode: js for js in JenisSimpanan.objects.all()}
+
+            # Anggota Demo #2: Siti Rahmah, S.Pd. (PPPK Aktif)
+            user_siti, _ = Pengguna.objects.update_or_create(
+                username='199003212022212008',
+                defaults={
+                    'password_hash': default_pw,
+                    'nama_lengkap': 'Siti Rahmah, S.Pd.',
+                    'peran': PeranPenggunaChoices.ANGGOTA,
+                    'is_aktif': True,
+                },
+            )
+            anggota_siti, _ = Anggota.objects.update_or_create(
+                pengguna=user_siti,
+                defaults={
+                    'no_anggota': 'KKP-2026-002',
+                    'nik': '1372012103900002',
+                    'nama': 'Siti Rahmah, S.Pd.',
+                    'status_kepegawaian': StatusKepegawaianChoices.PPPK,
+                    'masa_dinas_tahun': 4,
+                    'no_hp': '081374556677',
+                    'tanggal_masuk': date(2022, 3, 1),
+                    'status': StatusAnggotaChoices.AKTIF,
+                },
+            )
+            for no_kui, kode_js, nom in [
+                ('KUI-DEMO-201', 'SPK', Decimal('350000.00')),
+                ('KUI-DEMO-202', 'SKH', Decimal('500000.00')),
+                ('KUI-DEMO-203', 'SWJ', Decimal('900000.00')),
+                ('KUI-DEMO-204', 'SHR', Decimal('450000.00')),
+            ]:
+                TransaksiSimpanan.simpanMutasiSimpanan({
+                    'anggota_id': anggota_siti.id,
+                    'jenis_simpanan_id': peta_js[kode_js].id,
+                    'bendahara_id': bendahara.id,
+                    'no_kuitansi': no_kui,
+                    'jenis_transaksi': JenisTransaksiSimpananChoices.SETOR,
+                    'metode_bayar': MetodeBayarChoices.POTONG_GAJI,
+                    'nominal': nom,
+                    'keterangan': f'Setoran {peta_js[kode_js].nama} Anggota KKP-2026-002',
+                })
+
+            # Anggota Demo #3: Drs. Hendra Wijaya (Pensiunan — Proses Resign / Menunggu Kliring)
+            user_hendra, _ = Pengguna.objects.update_or_create(
+                username='196608171992031005',
+                defaults={
+                    'password_hash': default_pw,
+                    'nama_lengkap': 'Drs. Hendra Wijaya',
+                    'peran': PeranPenggunaChoices.ANGGOTA,
+                    'is_aktif': True,
+                },
+            )
+            anggota_hendra, _ = Anggota.objects.update_or_create(
+                pengguna=user_hendra,
+                defaults={
+                    'no_anggota': 'KKP-2026-003',
+                    'nik': '1372021708660003',
+                    'nama': 'Drs. Hendra Wijaya',
+                    'status_kepegawaian': StatusKepegawaianChoices.PENSIUNAN,
+                    'masa_dinas_tahun': 32,
+                    'no_hp': '081266112233',
+                    'tanggal_masuk': date(2005, 7, 1),
+                    'status': StatusAnggotaChoices.AKTIF,
+                },
+            )
+            for no_kui, kode_js, nom in [
+                ('KUI-DEMO-301', 'SPK', Decimal('350000.00')),
+                ('KUI-DEMO-302', 'SKH', Decimal('500000.00')),
+                ('KUI-DEMO-303', 'SWJ', Decimal('5400000.00')),
+                ('KUI-DEMO-304', 'SBR', Decimal('2500000.00')),
+            ]:
+                TransaksiSimpanan.simpanMutasiSimpanan({
+                    'anggota_id': anggota_hendra.id,
+                    'jenis_simpanan_id': peta_js[kode_js].id,
+                    'bendahara_id': bendahara.id,
+                    'no_kuitansi': no_kui,
+                    'jenis_transaksi': JenisTransaksiSimpananChoices.SETOR,
+                    'metode_bayar': MetodeBayarChoices.POTONG_GAJI,
+                    'nominal': nom,
+                    'keterangan': f'Akumulasi {peta_js[kode_js].nama} Anggota KKP-2026-003',
+                })
+
+            PengunduranDiri.simpanPermohonanResign(
+                anggota_id=anggota_hendra.id,
+                alasan='Pensiun / Purna Tugas — Memasuki masa purna bakti TMT 1 November 2026',
+                surat_url='media/resign/surat_pensiun_hendra_wijaya.pdf',
+            )
+            self.stdout.write(self.style.SUCCESS('[OK] Data contoh transaksi, anggota tambahan & pengajuan resign berhasil ditambahkan.'))

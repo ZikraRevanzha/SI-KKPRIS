@@ -11,6 +11,7 @@
 
 ### 🎯 Fokus / Tahapan Pengerjaan
 * **Restrukturisasi Folder Implementasi (`05_Implementasi/`):** Memisahkan komponen **Backend** (`backend/`) dan **Frontend** (`frontend/`) agar struktur proyek lebih rapi, modular, dan terstandar tanpa mengganggu *virtual environment* (`venv`) maupun fungsionalitas Django.
+* **Tahap 3:** Implementasi Modul **Manajemen Keanggotaan & Kliring Resign (`AnggotaController` — `UC-05`, `UC-08`, `UC-09` | `FR-MBR-01` s.d. `FR-MBR-04`)** beserta 4 rancangan halaman UI (`Data Anggota.png`, `Form Anggota Baru.png`, `Ajukan Pengunduran Diri.png`, dan `Verifikasi Pengunduran Diri.png`).
 
 ### 🛠️ Rincian Perubahan
 1. **Pemisahan Direktori `backend/` dan `frontend/` di `05_Implementasi/`:**
@@ -20,18 +21,29 @@
 2. **Penyesuaian Konfigurasi Path Django:**
    * Menambahkan penyesuaian `sys.path` pada `backend/manage.py`, `backend/si_kkpris/wsgi.py`, dan `backend/si_kkpris/asgi.py` agar perintah Django dapat berjalan konsisten dari `backend/` maupun dari root `05_Implementasi/`.
    * Memperbarui `backend/si_kkpris/settings.py` dengan definisi `BACKEND_DIR`, `PROJECT_ROOT`, dan `FRONTEND_DIR` sehingga `TEMPLATES`, `STATICFILES_DIRS`, `STATIC_ROOT`, `MEDIA_ROOT`, dan pemuatan `.env` terarah ke struktur baru.
-3. **Pengujian & Pembaruan Dokumentasi:**
-   * Menambahkan `test_05_integrasi_frontend_templates_dan_static` pada `backend/koperasi/tests.py` untuk memverifikasi resolusi `frontend/templates/`, `frontend/static/css/style.css`, dan render HTTP `/login/`.
-   * Memperbarui diagram pohon direktori serta panduan perintah pada `05_Implementasi/README.md`, `README.md`, dan `AGENTS.md`.
+3. **Implementasi Tahap 3: `AnggotaController` (`backend/koperasi/controllers/anggota_controller.py`):**
+   * Membangun class `AnggotaController` dengan method `generateNoAnggota()`, `kelolaDataAnggota()`, `perbaruiDataAnggota()`, `ajukanPengunduranDiri()`, dan `verifikasiPengunduranDiri()`.
+   * Mendukung pembuatan akun login anggota otomatis, pencatatan setoran awal Simpanan Pokok (`Rp350.000`) & Simpanan Khusus (`Rp500.000`) sesuai pilihan skema cicilan pada formulir pendaftaran, serta unggah berkas fotokopi KTP dan surat pengunduran diri ke `media/`.
+   * Mengimplementasikan kalkulasi kliring otomatis presisi `Decimal(15,2)`: $\text{Selisih Akhir} = \sum \text{Simpanan} - \sum \text{Kewajiban Pembiayaan}$, penguncian status anggota ke `PROSES_RESIGN`, serta penonaktifan akun (`is_aktif = False`) & status `NON_AKTIF_KELUAR` saat kliring diselesaikan oleh Bendahara.
+   * Merekam seluruh aksi keanggotaan dan kliring ke tabel `audit_trail_log`.
+4. **Pembangunan 4 Layar Antarmuka Tahap 3 (`frontend/templates/anggota/` & `frontend/static/css/style.css`):**
+   * `frontend/templates/anggota/data_anggota.html` (`Data Anggota.png` & `Form Anggota Baru.png`): 3 kartu statistik keanggotaan, bilah filter (`Cari`, `Status`, `Jenis Simpanan`), tabel anggota berpaginasi (`Sebelumnya`/`Berikutnya`), modal **Form Anggota Baru**, modal **Detail Profil Anggota**, dan modal **Edit Profil Anggota**.
+   * `frontend/templates/anggota/ajukan_pengunduran_diri.html` (`Ajukan Pengunduran Diri.png`): formulir mandiri anggota (dropdown `Alasan`, `Keterangan`, dropzone `Surat pengunduran diri`, kotak informasi estimasi kliring real-time, serta tabel status permohonan).
+   * `frontend/templates/anggota/verifikasi_pengunduran_diri.html` (`Verifikasi Pengunduran Diri.png`): tata letak 2 kolom untuk Bendahara & Ketua (tabel daftar pengajuan di sisi kiri dan kartu **Perhitungan** kliring `Total Simpanan`, `Sisa Pembiayaan`, `Selisih`, status `Dikembalikan ke anggota / Disetor anggota`, pratinjau surat, serta tombol `Tolak` & `Verifikasi` di sisi kanan).
+5. **Pengujian & Pembaruan Seeder / Dokumentasi:**
+   * Memperkaya `seed_master --with-demo` dengan data anggota tambahan (`KKP-2026-002` & `KKP-2026-003`) beserta contoh permohonan pengunduran diri untuk pengujian visual.
+   * Menambahkan `test_05_integrasi_frontend_templates_dan_static` dan `test_06_anggota_controller_dan_kliring_resign_tahap_3` pada `backend/koperasi/tests.py` (seluruh 6 skenario pengujian lulus 100% — **OK**).
+   * Memperbarui status peta jalan pada `AGENTS.md` dan `05_Implementasi/README.md`.
 
 ### 💬 Pesan Commit Terkait
 ```text
 refactor(config): pisahkan folder backend dan frontend
+feat(member): tambah manajemen anggota dan kliring resign
 ```
 
 ### 📌 Status & Rencana Selanjutnya
-* **Status Hari Ini:** Restrukturisasi direktori `05_Implementasi/backend/` dan `05_Implementasi/frontend/` selesai dan seluruh pengecekan serta unit test terverifikasi lulus.
-* **Rencana Berikutnya (Tahap 3):** Implementasi **Manajemen Keanggotaan & Kliring Resign (`AnggotaController` — `UC-02` s.d. `UC-04`)** beserta 4 halaman UI (`Data Anggota.png`, `Form Anggota Baru.png`, `Ajukan Pengunduran Diri.png`, dan `Verifikasi Pengunduran Diri.png`).
+* **Status Hari Ini:** Restrukturisasi direktori `backend/` & `frontend/` serta **Tahap 3** (`AnggotaController` + 4 layar UI Keanggotaan & Kliring Pengunduran Diri) selesai 100% dan lulus seluruh unit test.
+* **Rencana Berikutnya (Tahap 4):** Implementasi **Transaksi Multi-Simpanan Anggota (`SimpananController` — `UC-05`, `UC-06` / `UC-10`)** beserta halaman UI `Kelola Simpanan.png` dan `Transaksi Baru.png`.
 
 ---
 

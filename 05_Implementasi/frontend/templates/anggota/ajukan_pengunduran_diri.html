@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load kkpris_tags %}
+
+{% block title %}Ajukan Pengunduran Diri — SI-KKPRIS{% endblock %}
+
+{% block content %}
+<!-- HEADER HALAMAN (Sesuai Wireframe: Ajukan Pengunduran Diri.png — WD-22) -->
+<div class="page-header-row">
+    <div>
+        <h1 class="page-title">Ajukan Pengunduran Diri</h1>
+        <p class="page-subtitle">
+            Formulir permohonan berhenti dari keanggotaan Koperasi KKPRIS SMKN 1 Kota Solok beserta perhitungan kliring simpanan &amp; kewajiban
+        </p>
+    </div>
+</div>
+
+<!-- KARTU FORMULIR UTAMA (Sesuai Wireframe Ajukan Pengunduran Diri.png) -->
+<div class="panel-card">
+    <div class="panel-body" style="padding: 28px;">
+        <form method="post" action="{% url 'pengunduran_diri' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Field 1: Alasan -->
+            <div class="form-group">
+                <label class="form-label" for="id_alasan">Alasan</label>
+                <select id="id_alasan" name="alasan" class="form-control" required {% if pengajuan_aktif %}disabled{% endif %}>
+                    <option value="">Alasan</option>
+                    {% for item in pilihan_alasan %}
+                        <option value="{{ item }}">{{ item }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Field 2: Keterangan -->
+            <div class="form-group">
+                <label class="form-label" for="id_keterangan">Keterangan</label>
+                <textarea
+                    id="id_keterangan"
+                    name="keterangan"
+                    class="form-textarea"
+                    placeholder="Keterangan lengkap alasan pengunduran diri (misal: nomor SK mutasi/pensiun, tanggal efektif, dsb.)"
+                    {% if pengajuan_aktif %}disabled{% endif %}
+                ></textarea>
+            </div>
+
+            <!-- Field 3: Surat pengunduran diri -->
+            <div class="form-group">
+                <label class="form-label">Surat pengunduran diri</label>
+                <div class="upload-dropzone-box" style="min-height: 160px;">
+                    <input
+                        type="file"
+                        name="surat_pengunduran_diri"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onchange="tampilkanSuratResign(this)"
+                        {% if pengajuan_aktif %}disabled{% endif %}
+                    >
+                    <div class="upload-icon-badge">📄</div>
+                    <div id="labelSuratResign" style="font-size: 13.5px; font-weight: 600; color: var(--text-secondary);">
+                        Unggah berkas Surat Permohonan Pengunduran Diri resmi (PDF, JPG, atau PNG)
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted);">
+                        Pastikan surat telah ditandatangani oleh Anggota pemohon ({{ anggota.nama }} — {{ anggota.no_anggota }})
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kotak Informasi Kliring (Sesuai Wireframe Ajukan Pengunduran Diri.png) -->
+            <div class="info-banner-box">
+                <div class="stat-icon-box" style="width: 34px; height: 34px;">ℹ</div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; color: var(--text-primary); font-size: 13.5px;">
+                        Total simpanan dikurangi sisa pembiayaan akan dihitung oleh Bendahara
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                        Estimasi posisi Anda saat ini — Total Simpanan: <strong>{{ estimasi_simpanan|rupiah }}</strong> •
+                        Sisa Pembiayaan: <strong>{{ estimasi_kewajiban|rupiah }}</strong> •
+                        Estimasi Selisih Bersih:
+                        <strong style="color: {% if estimasi_selisih >= 0 %}var(--badge-success-text){% else %}var(--badge-danger-text){% endif %};">
+                            {{ estimasi_selisih|rupiah }}
+                            ({% if estimasi_selisih >= 0 %}Hak Pengembalian ke Anggota{% else %}Wajib Setor Pelunasan ke Koperasi{% endif %})
+                        </strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Baris Tombol Batal & Ajukan -->
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <a href="{% url 'beranda_anggota' %}" class="btn btn-outline">
+                    Batal
+                </a>
+                <button
+                    type="submit"
+                    class="btn btn-primary-dark"
+                    {% if pengajuan_aktif %}disabled style="opacity: 0.6; cursor: not-allowed;"{% endif %}
+                >
+                    Ajukan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- RIWAYAT / STATUS PENGAJUAN PENGUNDURAN DIRI ANGGOTA -->
+{% if riwayat_resign %}
+<div class="panel-card" style="margin-bottom: 0;">
+    <div class="panel-header">
+        <span class="panel-title">Status Permohonan Pengunduran Diri Saya</span>
+        <span class="status-badge">Kliring Simpanan &amp; Kewajiban</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tanggal Pengajuan</th>
+                <th>Alasan Keluar</th>
+                <th>Total Simpanan</th>
+                <th>Sisa Pembiayaan</th>
+                <th>Selisih Akhir</th>
+                <th>Status Kliring</th>
+                <th>Status Pengajuan</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in riwayat_resign %}
+                <tr>
+                    <td>{{ item.tanggal_pengajuan|date:"d/m/Y" }}</td>
+                    <td>{{ item.alasan_keluar }}</td>
+                    <td>{{ item.total_hak_simpanan|rupiah }}</td>
+                    <td>{{ item.total_kewajiban_pembiayaan|rupiah }}</td>
+                    <td style="font-weight: 700;">{{ item.selisih_akhir|rupiah }}</td>
+                    <td>
+                        <span class="status-badge {% if item.selisih_akhir >= 0 %}success{% else %}danger{% endif %}">
+                            {{ item.get_status_kliring_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if item.status_pengajuan == 'MENUNGGU_VERIFIKASI' %}
+                            <span class="status-badge warning">Menunggu Verifikasi</span>
+                        {% elif item.status_pengajuan == 'DISETUJUI_KELUAR' %}
+                            <span class="status-badge success">Disetujui Keluar</span>
+                        {% else %}
+                            <span class="status-badge danger">Ditolak</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function tampilkanSuratResign(input) {
+        const el = document.getElementById('labelSuratResign');
+        if (input.files && input.files.length > 0) {
+            el.textContent = 'Berkas surat dipilih: ' + input.files[0].name;
+            el.style.color = 'var(--brand-dark)';
+        }
+    }
+</script>
+{% endblock %}

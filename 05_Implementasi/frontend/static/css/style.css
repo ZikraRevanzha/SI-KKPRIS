@@ -982,13 +982,280 @@ body.sidebar-collapsed .main-wrapper {
     gap: 10px;
 }
 
+/* ============================================================================
+   4. KOMPONEN TAHAP 3: DATA ANGGOTA, MODAL ANGGOTA BARU, & KLIRING RESIGN
+      (Sesuai Data Anggota.png, Form Anggota Baru.png, Ajukan & Verifikasi Resign)
+   ============================================================================ */
+
+.stats-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.filter-toolbar {
+    background-color: #ffffff;
+    border: 1.5px solid var(--border-color);
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1fr 200px 210px;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.member-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.member-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #e2e8f0;
+    border: 1.5px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-primary);
+    flex-shrink: 0;
+}
+
+.member-info-primary {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.member-info-secondary {
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.action-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.action-square-btn {
+    width: 28px;
+    height: 28px;
+    border: 1.5px solid var(--border-color);
+    background-color: var(--bg-subtle);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.action-square-btn:hover {
+    border-color: var(--brand-primary);
+    background-color: var(--brand-surface);
+    color: var(--brand-dark);
+}
+
+.table-pagination-bar {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #ffffff;
+}
+
+.pagination-info {
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.pagination-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-sm {
+    height: 34px;
+    padding: 0 14px;
+    font-size: 12.5px;
+}
+
+/* Modal Form Anggota Baru (Sesuai Form Anggota Baru.png) */
+.modal-dialog.modal-lg {
+    max-width: 640px;
+    max-height: 92vh;
+    overflow-y: auto;
+}
+
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.form-textarea {
+    width: 100%;
+    min-height: 110px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    font-family: inherit;
+    color: var(--text-primary);
+    background-color: #ffffff;
+    border: 1.5px solid var(--border-color);
+    outline: none;
+    resize: vertical;
+}
+
+.form-textarea:focus {
+    border-color: var(--brand-primary);
+}
+
+.upload-dropzone-box {
+    border: 1.5px solid var(--border-color);
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    min-height: 136px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 8px;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.upload-dropzone-box:hover {
+    border-color: var(--brand-primary);
+    background: var(--brand-surface);
+}
+
+.upload-dropzone-box input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+}
+
+.upload-icon-badge {
+    width: 38px;
+    height: 38px;
+    border: 1.5px solid var(--border-color);
+    background-color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    color: var(--brand-dark);
+}
+
+.info-banner-box {
+    border: 1.5px solid var(--border-color);
+    background-color: #ffffff;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+/* Tata Letak 2 Kolom Verifikasi Pengunduran Diri (Sesuai Verifikasi Pengunduran Diri.png) */
+.resign-verify-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.95fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.data-table tr.row-selected td {
+    background-color: #f1f5f9;
+    font-weight: 600;
+}
+
+.calc-kv-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.calc-kv-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13.5px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border-subtle);
+}
+
+.calc-kv-row.total {
+    border-bottom: 1.5px solid var(--border-color);
+    padding-top: 4px;
+    font-weight: 700;
+    font-size: 14.5px;
+}
+
+.kliring-status-box {
+    border: 1.5px solid var(--border-color);
+    background-color: var(--bg-subtle);
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 18px;
+}
+
+.kliring-status-box.positive {
+    background-color: #f0fdf4;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.kliring-status-box.negative {
+    background-color: #fef2f2;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+.document-preview-box {
+    border: 1.5px solid var(--border-color);
+    background-color: #f1f5f9;
+    min-height: 150px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
 @media (max-width: 1100px) {
     .login-container {
         grid-template-columns: 1fr;
     }
+    .stats-grid-3,
     .stats-grid-4,
     .stats-grid-5 {
         grid-template-columns: repeat(2, 1fr);
+    }
+    .filter-toolbar,
+    .resign-verify-grid,
+    .form-grid-2 {
+        grid-template-columns: 1fr;
     }
     .charts-row {
         grid-template-columns: 1fr;
@@ -997,4 +1264,5 @@ body.sidebar-collapsed .main-wrapper {
         grid-template-columns: 1fr;
     }
 }
+
 
