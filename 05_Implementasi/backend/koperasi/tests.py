@@ -4,8 +4,10 @@ Unit Test untuk 16 Model & Aturan Bisnis Utama SI-KKPRIS (SRS v4.0).
 
 from datetime import date
 from decimal import Decimal
+from django.contrib.staticfiles.finders import find
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
+from django.template.loader import get_template
 from django.test import TestCase
 from koperasi.models import (
     Agunan,
@@ -276,4 +278,28 @@ class SIKKPRISModelsTestCase(TestCase):
         # 6. Proteksi RBAC: Anggota mencoba akses /dashboard/ pengurus -> ditolak & diarahkan ke /beranda/
         resp_anggota_forbidden = self.client.get('/dashboard/', follow=True)
         self.assertContains(resp_anggota_forbidden, 'Akses ditolak')
+
+    def test_05_integrasi_frontend_templates_dan_static(self):
+        """Memastikan pemisahan folder backend/ & frontend/ terhubung sempurna."""
+        # 1. Verifikasi resolusi template di frontend/templates/
+        for tpl_name in (
+            'base.html',
+            'auth/login.html',
+            'dashboard/dashboard_pengurus.html',
+            'dashboard/beranda_anggota.html',
+            'dashboard/modul_terjadwal.html',
+        ):
+            tpl = get_template(tpl_name)
+            self.assertIn('frontend', str(tpl.origin.name).replace('\\', '/'))
+
+        # 2. Verifikasi resolusi aset statis di frontend/static/
+        css_path = find('css/style.css')
+        self.assertIsNotNone(css_path)
+        self.assertIn('frontend/static/css/style.css', css_path.replace('\\', '/'))
+
+        # 3. Verifikasi HTTP render GET /login/ beserta referensi stylesheet
+        resp_login = self.client.get('/login/')
+        self.assertEqual(resp_login.status_code, 200)
+        self.assertTemplateUsed(resp_login, 'auth/login.html')
+        self.assertContains(resp_login, 'css/style.css')
 

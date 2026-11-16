@@ -7,6 +7,34 @@
 
 ---
 
+## 📅 16 November 2026
+
+### 🎯 Fokus / Tahapan Pengerjaan
+* **Restrukturisasi Folder Implementasi (`05_Implementasi/`):** Memisahkan komponen **Backend** (`backend/`) dan **Frontend** (`frontend/`) agar struktur proyek lebih rapi, modular, dan terstandar tanpa mengganggu *virtual environment* (`venv`) maupun fungsionalitas Django.
+
+### 🛠️ Rincian Perubahan
+1. **Pemisahan Direktori `backend/` dan `frontend/` di `05_Implementasi/`:**
+   * Memindahkan komponen backend (`koperasi/`, `si_kkpris/`, `media/`, `manage.py`, `requirements.txt`, `.env`, `.env.example`) ke dalam `05_Implementasi/backend/`.
+   * Memindahkan komponen frontend (`templates/` dan `static/`) ke dalam `05_Implementasi/frontend/` serta melengkapi subfolder `frontend/static/js/.gitkeep` dan `frontend/static/img/.gitkeep`.
+   * Mempertahankan `database/`, `venv/`, dan `README.md` di level root `05_Implementasi/`.
+2. **Penyesuaian Konfigurasi Path Django:**
+   * Menambahkan penyesuaian `sys.path` pada `backend/manage.py`, `backend/si_kkpris/wsgi.py`, dan `backend/si_kkpris/asgi.py` agar perintah Django dapat berjalan konsisten dari `backend/` maupun dari root `05_Implementasi/`.
+   * Memperbarui `backend/si_kkpris/settings.py` dengan definisi `BACKEND_DIR`, `PROJECT_ROOT`, dan `FRONTEND_DIR` sehingga `TEMPLATES`, `STATICFILES_DIRS`, `STATIC_ROOT`, `MEDIA_ROOT`, dan pemuatan `.env` terarah ke struktur baru.
+3. **Pengujian & Pembaruan Dokumentasi:**
+   * Menambahkan `test_05_integrasi_frontend_templates_dan_static` pada `backend/koperasi/tests.py` untuk memverifikasi resolusi `frontend/templates/`, `frontend/static/css/style.css`, dan render HTTP `/login/`.
+   * Memperbarui diagram pohon direktori serta panduan perintah pada `05_Implementasi/README.md`, `README.md`, dan `AGENTS.md`.
+
+### 💬 Pesan Commit Terkait
+```text
+refactor(config): pisahkan folder backend dan frontend
+```
+
+### 📌 Status & Rencana Selanjutnya
+* **Status Hari Ini:** Restrukturisasi direktori `05_Implementasi/backend/` dan `05_Implementasi/frontend/` selesai dan seluruh pengecekan serta unit test terverifikasi lulus.
+* **Rencana Berikutnya (Tahap 3):** Implementasi **Manajemen Keanggotaan & Kliring Resign (`AnggotaController` — `UC-02` s.d. `UC-04`)** beserta 4 halaman UI (`Data Anggota.png`, `Form Anggota Baru.png`, `Ajukan Pengunduran Diri.png`, dan `Verifikasi Pengunduran Diri.png`).
+
+---
+
 ## 📅 15 November 2026
 
 ### 🎯 Fokus / Tahapan Pengerjaan

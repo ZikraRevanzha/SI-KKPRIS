@@ -9,10 +9,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = BACKEND_DIR
+PROJECT_ROOT = BACKEND_DIR.parent
+FRONTEND_DIR = PROJECT_ROOT / 'frontend'
 
-# Load environment variables from .env
-load_dotenv(BASE_DIR / '.env')
+# Load environment variables from .env (utamakan backend/.env, fallback ke root implementasi)
+_env_path = BACKEND_DIR / '.env'
+if not _env_path.exists():
+    _env_path = PROJECT_ROOT / '.env'
+load_dotenv(_env_path)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv(
@@ -57,7 +63,7 @@ ROOT_URLCONF = 'si_kkpris.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [FRONTEND_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -121,12 +127,12 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [FRONTEND_DIR / 'static']
+STATIC_ROOT = BACKEND_DIR / 'staticfiles'
 
 # Media Uploads (Berkas KTP, Agunan, Bukti Transfer, Surat Resign)
 MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = BACKEND_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

@@ -34,26 +34,40 @@ Folder ini merupakan direktori utama tahap **Implementasi (Konstruksi Perangkat 
 
 ```text
 05_Implementasi/
-├── database/
+├── backend/                             # Seluruh Kode Backend Django (MVT Logic, 16 Model, Test)
+│   ├── koperasi/                        # Aplikasi Inti SI-KKPRIS
+│   │   ├── controllers/
+│   │   │   └── auth_controller.py       # AuthController, RBAC & Dashboard Views (Tahap 2)
+│   │   ├── management/commands/
+│   │   │   └── seed_master.py           # Seeder 5 Jenis Simpanan, 3 Akad & 3 Akun Peran
+│   │   ├── migrations/
+│   │   │   └── 0001_initial.py          # Migrasi 16 Model 3NF beserta Index & Constraint
+│   │   ├── templatetags/
+│   │   │   └── kkpris_tags.py           # Filter Format Mata Uang Rupiah Berbasis Decimal
+│   │   ├── admin.py                     # Konfigurasi Admin & Proteksi Append-Only AuditLog
+│   │   ├── models.py                    # 16 Model & Method Domain sesuai Class Diagram
+│   │   ├── tests.py                     # Unit Test Integrasi 16 Model, RBAC & Frontend
+│   │   └── urls.py                      # Routing URL Aplikasi Koperasi
+│   ├── si_kkpris/                       # Konfigurasi Proyek Utama Django
+│   │   ├── settings.py                  # Konfigurasi MySQL 8.4, RBAC, Session, Frontend & Media
+│   │   ├── urls.py                      # Routing URL Utama
+│   │   └── wsgi.py / asgi.py
+│   ├── media/                           # Direktori Unggahan Berkas (Agunan, KTP, Bukti)
+│   ├── .env.example                     # Contoh Konfigurasi Environment
+│   ├── manage.py                        # Utilitas Manajemen Django
+│   └── requirements.txt                 # Daftar Pustaka Python Terkunci
+├── database/                            # Skema Basis Data SQL
 │   └── 02_DDL_MySQL_SI-KKPRIS.sql       # Skema DDL 16 Tabel (3NF) MySQL 8.0+ InnoDB
-├── koperasi/                            # Aplikasi Inti SI-KKPRIS
-│   ├── management/commands/
-│   │   └── seed_master.py               # Seeder 5 Jenis Simpanan, 3 Akad & 3 Akun Peran
-│   ├── migrations/
-│   │   └── 0001_initial.py              # Migrasi 16 Model 3NF beserta Index & Constraint
-│   ├── admin.py                         # Konfigurasi Admin & Proteksi Append-Only AuditLog
-│   ├── models.py                        # 16 Model & Method Domain sesuai Class Diagram
-│   └── tests.py                         # Unit Test Integrasi 16 Model & Aturan Bisnis
-├── si_kkpris/                           # Konfigurasi Proyek Utama Django
-│   ├── settings.py                      # Konfigurasi MySQL 8.4, RBAC, Session & Media
-│   ├── urls.py                          # Routing URL Utama
-│   └── wsgi.py / asgi.py
-├── media/                               # Direktori Unggahan Berkas (Agunan, KTP, Bukti)
-├── static/                              # Aset Statis (CSS, JS, Gambar)
-├── templates/                           # Template Antarmuka HTML Django
-├── .env.example                         # Contoh Konfigurasi Environment
-├── manage.py                            # Utilitas Manajemen Django
-├── requirements.txt                     # Daftar Pustaka Python Terkunci
+├── frontend/                            # Seluruh Kode Antarmuka Pengguna (Templates & Assets)
+│   ├── static/                          # Aset Statis (CSS, JS, Gambar)
+│   │   ├── css/style.css                # Design System & Stylesheet Utama
+│   │   ├── js/                          # Skrip Interaktif Frontend
+│   │   └── img/                         # Aset Gambar & Ikon UI
+│   └── templates/                       # Template Antarmuka HTML Django (22 Wireframe Final)
+│       ├── base.html
+│       ├── auth/login.html
+│       └── dashboard/
+├── venv/                                # Python Virtual Environment (Lokal, tidak di-commit)
 └── README.md                            # Dokumentasi Panduan Folder Implementasi
 ```
 
@@ -61,20 +75,23 @@ Folder ini merupakan direktori utama tahap **Implementasi (Konstruksi Perangkat 
 
 ## 🚀 Panduan Menjalankan Proyek Secara Lokal
 
-1. **Aktifkan Virtual Environment:**
+1. **Aktifkan Virtual Environment & Masuk ke Direktori Backend:**
    ```powershell
    cd "05_Implementasi"
    .\venv\Scripts\Activate.ps1
+   cd backend
    ```
-2. **Jalankan Migrasi & Seed Master Data:**
+2. **Periksa Konfigurasi, Migrasi & Seed Master Data:**
    ```powershell
+   python manage.py check
    python manage.py migrate
    python manage.py seed_master
    ```
-3. **Jalankan Unit Test 16 Model:**
+3. **Jalankan Unit Test (Model, RBAC & Integrasi Frontend):**
    ```powershell
    python manage.py test -v 2
    ```
+   *(Atau dari folder `05_Implementasi/`: `python backend\manage.py test koperasi -v 2`)*
 4. **Jalankan Server Pengembangan:**
    ```powershell
    python manage.py runserver

@@ -69,7 +69,10 @@ Bertindaklah sebagai **Senior Software Engineer** yang ahli dalam standar **Conv
 
 ## 4. Pedoman Direktori & Teknis Implementasi SI-KKPRIS
 
-* **Direktori Implementasi:** Seluruh kode program implementasi aplikasi ditempatkan di dalam folder [`05_Implementasi/`](./05_Implementasi) (sejajar dengan folder `UTS/`).
+* **Direktori Implementasi:** Seluruh kode program implementasi aplikasi ditempatkan di dalam folder [`05_Implementasi/`](./05_Implementasi) (sejajar dengan folder `UTS/`) dengan pemisahan struktur yang rapi:
+  * [`05_Implementasi/backend/`](./05_Implementasi/backend) — seluruh kode *backend* Django (`si_kkpris/`, `koperasi/`, `media/`, `manage.py`, `requirements.txt`, `.env.example`).
+  * [`05_Implementasi/frontend/`](./05_Implementasi/frontend) — seluruh kode *frontend* antarmuka (`templates/` HTML dan `static/` CSS/JS/Img).
+  * [`05_Implementasi/database/`](./05_Implementasi/database) — skema DDL MySQL (`02_DDL_MySQL_SI-KKPRIS.sql`).
 * **Stack Teknologi (Sesuai SRS v4.0):**
   * **Backend:** Python 3.11+ & Django Framework (arsitektur MVT/MVC).
   * **Database:** MySQL 8.0+ (`InnoDB`, `utf8mb4_unicode_ci`) melalui Laragon MySQL 8.4.
