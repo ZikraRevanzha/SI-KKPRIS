@@ -407,4 +407,127 @@ class SIKKPRISModelsTestCase(TestCase):
         self.assertEqual(anggota_rina.status, StatusAnggotaChoices.NON_AKTIF_KELUAR)
         self.assertFalse(anggota_rina.pengguna.is_aktif)
 
+    def test_07_simpanan_controller_dan_ui_tahap_4(self):
+        """Menguji fitur Tahap 4: Kelola Simpanan, Transaksi Baru, Proteksi BR-08, Cetak Bukti & Ekspor."""
+        swj = JenisSimpanan.objects.get(kode='SWJ')
+        shr = JenisSimpanan.objects.get(kode='SHR')
+
+        # 1. Login sebagai Bendahara & buka halaman Kelola Simpanan (WD-05 & WD-06)
+        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+        resp_smp = self.client.get('/simpanan/')
+        self.assertEqual(resp_smp.status_code, 200)
+        self.assertTemplateUsed(resp_smp, 'simpanan/kelola_simpanan.html')
+        self.assertContains(resp_smp, 'Kelola Simpanan')
+        self.assertContains(resp_smp, 'Simpanan Pokok')
+        self.assertContains(resp_smp, 'Simpanan Wajib')
+        self.assertContains(resp_smp, 'Simpanan Khusus')
+        self.assertContains(resp_smp, 'Saldo Sebelum')
+        self.assertContains(resp_smp, 'Saldo Sesudah')
+
+        # 2. Catat Setor Simpanan Wajib (Rp 150.000) & Simpanan Hari Raya (Rp 600.000)
+        self.client.post(
+            '/simpanan/tambah/',
+            {
+                'anggota_id': self.anggota.id,
+                'jenis_simpanan_id': swj.id,
+                'jenis_transaksi': 'SETOR',
+                'metode_bayar': 'POTONG_GAJI',
+                'nominal': '150000',
+                'keterangan': 'Setoran Simpanan Wajib Bulan November',
+            },
+            follow=True,
+        )
+        resp_setor_shr = self.client.post(
+            '/simpanan/tambah/',
+            {
+                'anggota_id': self.anggota.id,
+                'jenis_simpanan_id': shr.id,
+                'jenis_transaksi': 'SETOR',
+                'metode_bayar': 'TUNAI',
+                'nominal': '600000',
+                'keterangan': 'Setoran Simpanan Hari Raya',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_setor_shr.status_code, 200)
+        self.assertContains(resp_setor_shr, 'Cetak Bukti Transaksi')
+        self.assertEqual(
+            TransaksiSimpanan.hitungSaldoBerjalan(self.anggota.id, shr.id),
+            Decimal('600000.00'),
+        )
+
+        # 3. Proteksi BR-08: Percobaan tarik Simpanan Wajib (dapat_ditarik = 0) wajib ditolak
+        resp_tarik_terkunci = self.client.post(
+            '/simpanan/tambah/',
+            {
+                'anggota_id': self.anggota.id,
+                'jenis_simpanan_id': swj.id,
+                'jenis_transaksi': 'TARIK',
+                'metode_bayar': 'TUNAI',
+                'nominal': '50000',
+            },
+            follow=True,
+        )
+        self.assertContains(resp_tarik_terkunci, 'terkunci')
+        self.assertEqual(
+            TransaksiSimpanan.hitungSaldoBerjalan(self.anggota.id, swj.id),
+            Decimal('150000.00'),
+        )
+
+        # 4. Proteksi BR-08: Percobaan tarik Simpanan Hari Raya melebihi saldo (Rp 900.000 > Rp 600.000) ditolak
+        resp_tarik_lebih = self.client.post(
+            '/simpanan/tambah/',
+            {
+                'anggota_id': self.anggota.id,
+                'jenis_simpanan_id': shr.id,
+                'jenis_transaksi': 'TARIK',
+                'metode_bayar': 'TUNAI',
+                'nominal': '900000',
+            },
+            follow=True,
+        )
+        self.assertContains(resp_tarik_lebih, 'melebihi saldo')
+
+        # 5. Penarikan valid Simpanan Hari Raya (Rp 250.000 -> sisa Rp 350.000)
+        resp_tarik_valid = self.client.post(
+            '/simpanan/tambah/',
+            {
+                'anggota_id': self.anggota.id,
+                'jenis_simpanan_id': shr.id,
+                'jenis_transaksi': 'TARIK',
+                'metode_bayar': 'TUNAI',
+                'nominal': '250000',
+                'keterangan': 'Penarikan sebagian Simpanan Hari Raya',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_tarik_valid.status_code, 200)
+        self.assertEqual(
+            TransaksiSimpanan.hitungSaldoBerjalan(self.anggota.id, shr.id),
+            Decimal('350000.00'),
+        )
+
+        # 6. Cetak Kuitansi & Ekspor Excel (.xlsx)
+        mutasi_terakhir = TransaksiSimpanan.objects.filter(anggota=self.anggota).first()
+        resp_kuitansi = self.client.get(f'/simpanan/kuitansi/{mutasi_terakhir.no_kuitansi}/')
+        self.assertEqual(resp_kuitansi.status_code, 200)
+        self.assertTemplateUsed(resp_kuitansi, 'simpanan/kuitansi_simpanan_print.html')
+
+        resp_excel = self.client.get('/simpanan/ekspor/')
+        self.assertEqual(resp_excel.status_code, 200)
+        self.assertEqual(
+            resp_excel['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+        # 7. Portal Mandiri 'Simpanan Saya' untuk Peran ANGGOTA (UC-02)
+        self.client.get('/logout/')
+        self.client.post('/login/', {'username': 'KKP-2026-001', 'password': 'Kkpris2026!'})
+        resp_anggota_smp = self.client.get('/simpanan/')
+        self.assertEqual(resp_anggota_smp.status_code, 200)
+        self.assertTemplateUsed(resp_anggota_smp, 'simpanan/simpanan_anggota.html')
+        self.assertContains(resp_anggota_smp, 'Simpanan Saya')
+        self.assertContains(resp_anggota_smp, 'Simpanan Terkunci')
+
+
 

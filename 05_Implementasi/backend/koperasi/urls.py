@@ -3,7 +3,11 @@ URL Routing Aplikasi Koperasi SI-KKPRIS.
 """
 
 from django.urls import path
-from koperasi.controllers import anggota_controller, auth_controller
+from koperasi.controllers import (
+    anggota_controller,
+    auth_controller,
+    simpanan_controller,
+)
 
 urlpatterns = [
     # Root & Autentikasi (Tahap 2 — UC-01)
@@ -32,13 +36,25 @@ urlpatterns = [
         name='proses_verifikasi_resign',
     ),
 
-    # Rute Menu Sidebar untuk Tahap 4 s.d. Tahap 7 (Akan diaktifkan penuh per tahapan)
+    # Transaksi Multi-Simpanan Anggota (Tahap 4 — UC-02, UC-10, UC-13)
+    path('simpanan/', simpanan_controller.kelola_simpanan_router_view, name='kelola_simpanan'),
     path(
-        'simpanan/',
-        auth_controller.modul_terjadwal_view,
-        {'nama_modul': 'Simpanan', 'tahap': 4},
-        name='kelola_simpanan',
+        'simpanan/tambah/',
+        simpanan_controller.tambah_transaksi_simpanan_view,
+        name='tambah_transaksi_simpanan',
     ),
+    path(
+        'simpanan/ekspor/',
+        simpanan_controller.ekspor_simpanan_excel_view,
+        name='ekspor_simpanan_excel',
+    ),
+    path(
+        'simpanan/kuitansi/<str:no_kuitansi>/',
+        simpanan_controller.cetak_kuitansi_simpanan_view,
+        name='cetak_kuitansi_simpanan',
+    ),
+
+    # Rute Menu Sidebar untuk Tahap 5 s.d. Tahap 7 (Akan diaktifkan penuh per tahapan)
     path(
         'pembiayaan/',
         auth_controller.modul_terjadwal_view,

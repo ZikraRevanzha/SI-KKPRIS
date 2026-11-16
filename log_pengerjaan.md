@@ -12,6 +12,7 @@
 ### 🎯 Fokus / Tahapan Pengerjaan
 * **Restrukturisasi Folder Implementasi (`05_Implementasi/`):** Memisahkan komponen **Backend** (`backend/`) dan **Frontend** (`frontend/`) agar struktur proyek lebih rapi, modular, dan terstandar tanpa mengganggu *virtual environment* (`venv`) maupun fungsionalitas Django.
 * **Tahap 3:** Implementasi Modul **Manajemen Keanggotaan & Kliring Resign (`AnggotaController` — `UC-05`, `UC-08`, `UC-09` | `FR-MBR-01` s.d. `FR-MBR-04`)** beserta 4 rancangan halaman UI (`Data Anggota.png`, `Form Anggota Baru.png`, `Ajukan Pengunduran Diri.png`, dan `Verifikasi Pengunduran Diri.png`).
+* **Tahap 4:** Implementasi Modul **Transaksi Multi-Simpanan Anggota (`SimpananController` — `UC-02`, `UC-10`, `UC-13` | `FR-SMP-01` s.d. `FR-SMP-03`, `BR-08`)** beserta halaman UI `Kelola Simpanan.png`, `Transaksi Baru.png`, `Cetak Bukti Transaksi.png`, dan portal mandiri `Simpanan Saya`.
 
 ### 🛠️ Rincian Perubahan
 1. **Pemisahan Direktori `backend/` dan `frontend/` di `05_Implementasi/`:**
@@ -30,20 +31,25 @@
    * `frontend/templates/anggota/data_anggota.html` (`Data Anggota.png` & `Form Anggota Baru.png`): 3 kartu statistik keanggotaan, bilah filter (`Cari`, `Status`, `Jenis Simpanan`), tabel anggota berpaginasi (`Sebelumnya`/`Berikutnya`), modal **Form Anggota Baru**, modal **Detail Profil Anggota**, dan modal **Edit Profil Anggota**.
    * `frontend/templates/anggota/ajukan_pengunduran_diri.html` (`Ajukan Pengunduran Diri.png`): formulir mandiri anggota (dropdown `Alasan`, `Keterangan`, dropzone `Surat pengunduran diri`, kotak informasi estimasi kliring real-time, serta tabel status permohonan).
    * `frontend/templates/anggota/verifikasi_pengunduran_diri.html` (`Verifikasi Pengunduran Diri.png`): tata letak 2 kolom untuk Bendahara & Ketua (tabel daftar pengajuan di sisi kiri dan kartu **Perhitungan** kliring `Total Simpanan`, `Sisa Pembiayaan`, `Selisih`, status `Dikembalikan ke anggota / Disetor anggota`, pratinjau surat, serta tombol `Tolak` & `Verifikasi` di sisi kanan).
-5. **Pengujian & Pembaruan Seeder / Dokumentasi:**
+5. **Implementasi Tahap 4: `SimpananController` & Layar UI Simpanan (`backend/koperasi/controllers/simpanan_controller.py`, `frontend/templates/simpanan/`):**
+   * Membangun `SimpananController` dengan method `generateNoKuitansiSimpanan()`, `lihatSaldoDanStatus()`, dan `catatSetorTarikSimpanan()` berpresisi `Decimal(15,2)`.
+   * Menerapkan aturan bisnis **BR-08** secara ketat: mengunci penarikan (`TARIK`) pada Simpanan Pokok (`SPK`), Wajib (`SWJ`), dan Khusus (`SKH`) (`dapat_ditarik = 0`), mengizinkan penarikan hanya pada Simpanan Hari Raya (`SHR`) dan Berencana (`SBR`) (`dapat_ditarik = 1`), serta menolak penarikan jika melebihi saldo tersedia.
+   * Membangun `frontend/templates/simpanan/kelola_simpanan.html` (`Kelola Simpanan.png`, `Transaksi Baru.png`, & `Cetak Bukti Transaksi.png`), `frontend/templates/simpanan/simpanan_anggota.html` (portal `Simpanan Saya` untuk Anggota), dan `frontend/templates/simpanan/kuitansi_simpanan_print.html` (lembar cetak kuitansi resmi) beserta fitur ekspor Excel (`.xlsx`).
+6. **Pengujian & Pembaruan Seeder / Dokumentasi:**
    * Memperkaya `seed_master --with-demo` dengan data anggota tambahan (`KKP-2026-002` & `KKP-2026-003`) beserta contoh permohonan pengunduran diri untuk pengujian visual.
-   * Menambahkan `test_05_integrasi_frontend_templates_dan_static` dan `test_06_anggota_controller_dan_kliring_resign_tahap_3` pada `backend/koperasi/tests.py` (seluruh 6 skenario pengujian lulus 100% — **OK**).
+   * Menambahkan `test_05_integrasi_frontend_templates_dan_static`, `test_06_anggota_controller_dan_kliring_resign_tahap_3`, dan `test_07_simpanan_controller_dan_ui_tahap_4` pada `backend/koperasi/tests.py` (seluruh 7 skenario pengujian lulus 100% — **OK**).
    * Memperbarui status peta jalan pada `AGENTS.md` dan `05_Implementasi/README.md`.
 
 ### 💬 Pesan Commit Terkait
 ```text
 refactor(config): pisahkan folder backend dan frontend
 feat(member): tambah manajemen anggota dan kliring resign
+feat(simpanan): tambah modul transaksi multi-simpanan anggota
 ```
 
 ### 📌 Status & Rencana Selanjutnya
-* **Status Hari Ini:** Restrukturisasi direktori `backend/` & `frontend/` serta **Tahap 3** (`AnggotaController` + 4 layar UI Keanggotaan & Kliring Pengunduran Diri) selesai 100% dan lulus seluruh unit test.
-* **Rencana Berikutnya (Tahap 4):** Implementasi **Transaksi Multi-Simpanan Anggota (`SimpananController` — `UC-05`, `UC-06` / `UC-10`)** beserta halaman UI `Kelola Simpanan.png` dan `Transaksi Baru.png`.
+* **Status Hari Ini:** Restrukturisasi direktori `backend/` & `frontend/`, **Tahap 3** (`AnggotaController`), serta **Tahap 4** (`SimpananController` & 5 Skema Simpanan UI) selesai 100% dan lulus seluruh unit test.
+* **Rencana Berikutnya (Tahap 5):** Implementasi **Pembiayaan Syariah, Agunan, Approval Kas & Realisasi (`PembiayaanController` — `UC-07` s.d. `UC-10`)** beserta 7 layar UI Pembiayaan & Persetujuan Kas Ketua.
 
 ---
 
