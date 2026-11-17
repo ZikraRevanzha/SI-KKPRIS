@@ -1,0 +1,419 @@
+{% extends 'base.html' %}
+{% load kkpris_tags %}
+
+{% block title %}Detail Pembiayaan {{ pembiayaan.no_pembiayaan }} — SI-KKPRIS{% endblock %}
+
+{% block content %}
+<!-- HEADER HALAMAN + TOMBOL KEMBALI & CATAT REALISASI PENCAIRAN (Sesuai Wireframe Detail Pembiayaan.png — WD-09) -->
+<div class="page-header-row">
+    <div>
+        <h1 class="page-title">Detail Pembiayaan</h1>
+        <p class="page-subtitle">
+            Nomor Kontrak: <strong>{{ pembiayaan.no_pembiayaan }}</strong> •
+            Nomor Antrean: <strong>#{{ pembiayaan.no_antrean }}</strong> •
+            Tanggal Pengajuan: {{ pembiayaan.tanggal_pengajuan|date:"d F Y" }}
+        </p>
+    </div>
+
+    <div class="page-actions">
+        <a href="{% url 'kelola_pembiayaan' %}" class="btn btn-outline">Kembali</a>
+
+        {% if request.pengguna.peran == 'BENDAHARA' %}
+            {% if pembiayaan.status == 'DISETUJUI_KETUA' %}
+                <button type="button" class="btn btn-primary-dark" onclick="bukaModalRealisasi()">
+                    Catat Realisasi Pencairan
+                </button>
+            {% elif pembiayaan.status == 'MENUNGGU_VERIFIKASI' %}
+                <button type="button" class="btn btn-primary-dark" onclick="bukaModalVerifikasiBendahara()">
+                    Verifikasi &amp; Teruskan ke Ketua
+                </button>
+            {% else %}
+                <button
+                    type="button"
+                    class="btn btn-primary-dark"
+                    disabled
+                    style="opacity: 0.55; cursor: not-allowed;"
+                    title="Hanya aktif apabila pembiayaan telah disetujui Ketua (Two-Man Rule)"
+                >
+                    Catat Realisasi Pencairan
+                </button>
+            {% endif %}
+        {% elif request.pengguna.peran == 'KETUA' %}
+            {% if pembiayaan.status in 'MENUNGGU_VERIFIKASI,MENUNGGU_PERSETUJUAN_KETUA' %}
+                <a href="{% url 'persetujuan_kas' %}" class="btn btn-primary-dark">
+                    Proses Persetujuan Kas
+                </a>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- TATA LETAK 2 KOLOM (Sesuai Wireframe Detail Pembiayaan.png: Kiri Ringkasan Akad & Jadwal Angsuran, Kanan Status Persetujuan) -->
+<div class="detail-pembiayaan-grid">
+    <!-- KOLOM KIRI: Ringkasan Akad + Jadwal Angsuran -->
+    <div>
+        <!-- PANEL 1: RINGKASAN AKAD -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <span class="panel-title">Ringkasan Akad</span>
+                <span class="status-badge">
+                    Antrean #{{ pembiayaan.no_antrean }} • {{ pembiayaan.tujuan_pembiayaan }}
+                </span>
+            </div>
+            <div class="panel-body">
+                <div class="ringkasan-akad-grid">
+                    <!-- Kolom Kiri Ringkasan -->
+                    <div>
+                        <div class="ringkasan-kv-row">
+                            <span class="ringkasan-kv-label">Anggota</span>
+                            <span class="ringkasan-kv-val">{{ pembiayaan.anggota.nama }} ({{ pembiayaan.anggota.no_anggota }})</span>
+                        </div>
+                        <div class="ringkasan-kv-row">
+                            <span class="ringkasan-kv-label">Jumlah</span>
+                            <span class="ringkasan-kv-val">{{ pembiayaan.harga_pokok|rupiah }}</span>
+                        </div>
+                        <div class="ringkasan-kv-row">
+                            <span class="ringkasan-kv-label">Tenor</span>
+                            <span class="ringkasan-kv-val">{{ pembiayaan.tenor_bulan }} Bulan</span>
+                        </div>
+                        <div class="ringkasan-kv-row" style="border-bottom: none; padding-bottom: 0;">
+                            <span class="ringkasan-kv-label">Status</span>
+                            <span class="ringkasan-kv-val">
+                                {% if pembiayaan.status == 'AKTIF' or pembiayaan.status == 'LUNAS' %}
+                                    <span class="status-badge success">{{ pembiayaan.get_status_display }}</span>
+                                {% elif pembiayaan.status == 'DISETUJUI_KETUA' %}
+                                    <span class="status-badge info" style="background:#e0f2fe;color:#0369a1;border-color:#7dd3fc;">{{ pembiayaan.get_status_display }}</span>
+                                {% elif pembiayaan.status == 'DITOLAK' %}
+                                    <span class="status-badge danger">{{ pembiayaan.get_status_display }}</span>
+                                {% else %}
+                                    <span class="status-badge warning">{{ pembiayaan.get_status_display }}</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Kolom Kanan Ringkasan -->
+                    <div>
+                        <div class="ringkasan-kv-row">
+                            <span class="ringkasan-kv-label">Akad</span>
+                            <span class="ringkasan-kv-val">{{ pembiayaan.jenis_akad.get_nama_display }}</span>
+                        </div>
+                        <div class="ringkasan-kv-row">
+                            <span class="ringkasan-kv-label">Margin/Ujrah</span>
+                            <span class="ringkasan-kv-val">
+                                {{ pembiayaan.total_margin|rupiah }} ({{ pembiayaan.margin_persen }}% Flat)
+                            </span>
+                        </div>
+                        <div class="ringkasan-kv-row">
+                            <span class="ringkasan-kv-label">Angsuran/Bulan</span>
+                            <span class="ringkasan-kv-val" style="color: var(--brand-dark);">{{ pembiayaan.angsuran_bulanan|rupiah }}</span>
+                        </div>
+                        <div class="ringkasan-kv-row" style="border-bottom: none; padding-bottom: 0;">
+                            <span class="ringkasan-kv-label">Total Kewajiban</span>
+                            <span class="ringkasan-kv-val">{{ pembiayaan.total_kewajiban|rupiah }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if daftar_agunan %}
+                    <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-subtle);">
+                        <div style="font-size: 12.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">
+                            Dokumen Agunan Terlampir (Plafon &gt; Rp 70.000.000)
+                        </div>
+                        {% for agn in daftar_agunan %}
+                            <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-subtle); border: 1px solid var(--border-color); padding: 10px 14px; font-size: 12.5px;">
+                                <div>
+                                    <strong>{{ agn.get_jenis_agunan_display }}</strong> — No. Reg: <strong>{{ agn.no_registrasi }}</strong>
+                                    (Nilai Taksiran: {{ agn.nilai_taksiran|rupiah }})
+                                </div>
+                                <span class="status-badge">{{ agn.berkas_url }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- PANEL 2: JADWAL ANGSURAN (6 Kolom Eksak Sesuai Wireframe Detail Pembiayaan.png) -->
+        <div class="panel-card" style="margin-bottom: 0;">
+            <div class="panel-header">
+                <span class="panel-title">Jadwal Angsuran</span>
+                {% if jadwal_sudah_terbit %}
+                    <span class="status-badge success">Kartu Angsuran Resmi</span>
+                {% else %}
+                    <span class="status-badge warning">Simulasi Pratinjau (Menunggu Realisasi Pencairan)</span>
+                {% endif %}
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Bulan Ke</th>
+                            <th>Jatuh Tempo</th>
+                            <th>Pokok</th>
+                            <th>Margin</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for jdw in page_obj.object_list %}
+                            <tr>
+                                <td style="font-weight: 700;">Bulan ke-{{ jdw.angsuran_ke }}</td>
+                                <td>{{ jdw.jatuh_tempo|date:"d/m/Y" }}</td>
+                                <td>{{ jdw.porsi_pokok|rupiah }}</td>
+                                <td>{{ jdw.porsi_margin|rupiah }}</td>
+                                <td style="font-weight: 700;">{{ jdw.jumlah_angsuran|rupiah }}</td>
+                                <td>
+                                    {% if jdw.status_bayar == 'LUNAS' %}
+                                        <span class="status-badge success">Lunas</span>
+                                    {% elif jdw.status_bayar == 'BELUM_LUNAS' %}
+                                        <span class="status-badge warning">Belum Lunas</span>
+                                    {% else %}
+                                        <span class="status-badge">Pratinjau</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- BARIS PAGINASI (Sesuai Tombol "Sebelumnya" & "Berikutnya" pada Detail Pembiayaan.png) -->
+            <div class="table-pagination-bar">
+                <div class="pagination-info">
+                    Halaman {{ page_obj.number }} dari {{ page_obj.paginator.num_pages }}
+                    (Tenor {{ pembiayaan.tenor_bulan }} bulan)
+                </div>
+                <div class="pagination-btn-group">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline btn-sm">
+                            Sebelumnya
+                        </a>
+                    {% else %}
+                        <button type="button" class="btn btn-outline btn-sm" disabled style="opacity: 0.5; cursor: not-allowed;">
+                            Sebelumnya
+                        </button>
+                    {% endif %}
+
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline btn-sm">
+                            Berikutnya
+                        </a>
+                    {% else %}
+                        <button type="button" class="btn btn-outline btn-sm" disabled style="opacity: 0.5; cursor: not-allowed;">
+                            Berikutnya
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KOLOM KANAN: Status Persetujuan (Vertical Stepper) + Kotak Informasi Pencairan Off-System -->
+    <div>
+        <div class="panel-card">
+            <div class="panel-header">
+                <span class="panel-title">Status Persetujuan</span>
+                <span class="status-badge">Two-Man Rule</span>
+            </div>
+            <div class="panel-body">
+                <div class="approval-timeline">
+                    <!-- Tahap 1: Diajukan -->
+                    <div class="timeline-step done">
+                        <span class="timeline-dot"></span>
+                        <div>
+                            <div style="font-weight: 700; font-size: 13.5px; color: var(--text-primary);">Diajukan</div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                                {{ pembiayaan.tanggal_pengajuan|date:"d/m/Y" }} • Antrean #{{ pembiayaan.no_antrean }}
+                                {% if log_verifikasi_bendahara %}
+                                    <br>Diverifikasi Bendahara: <strong>{{ log_verifikasi_bendahara.get_keputusan_display }}</strong>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tahap 2: Disetujui Ketua -->
+                    <div class="timeline-step {% if step_ketua_selesai %}done{% elif pembiayaan.status == 'DITOLAK' %}rejected{% endif %}">
+                        <span class="timeline-dot"></span>
+                        <div>
+                            <div style="font-weight: 700; font-size: 13.5px; color: var(--text-primary);">Disetujui Ketua</div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                                {% if log_persetujuan_ketua %}
+                                    {{ log_persetujuan_ketua.waktu_keputusan|date:"d/m/Y H:i" }} —
+                                    <strong>{{ log_persetujuan_ketua.get_keputusan_display }}</strong>
+                                    {% if log_persetujuan_ketua.catatan %}
+                                        <br>Catatan: "{{ log_persetujuan_ketua.catatan }}"
+                                    {% endif %}
+                                {% elif pembiayaan.status == 'DITOLAK' %}
+                                    Pengajuan ditolak
+                                {% else %}
+                                    Menunggu otorisasi pengeluaran kas Ketua Koperasi
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tahap 3: Direalisasikan -->
+                    <div class="timeline-step {% if step_realisasi_selesai %}done{% endif %}">
+                        <span class="timeline-dot"></span>
+                        <div>
+                            <div style="font-weight: 700; font-size: 13.5px; color: var(--text-primary);">Direalisasikan</div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                                {% if realisasi_obj %}
+                                    Dicairkan {{ realisasi_obj.tanggal_realisasi|date:"d/m/Y" }} via
+                                    <strong>{{ realisasi_obj.get_metode_pencairan_display }}</strong><br>
+                                    Ref: <strong>{{ realisasi_obj.nomor_referensi_bank }}</strong> ({{ realisasi_obj.nominal_cair|rupiah }})
+                                {% else %}
+                                    Menunggu pencatatan realisasi pencairan oleh Bendahara
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KOTAK CATATAN OFF-SYSTEM (Eksak Sesuai Wireframe Detail Pembiayaan.png) -->
+        <div class="dashed-info-banner" style="margin-bottom: 0;">
+            <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
+                Pencairan fisik dana dilakukan di luar sistem; sistem hanya mencatat konfirmasi.
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if request.pengguna.peran == 'BENDAHARA' %}
+<!-- ============================================================================
+     MODAL VERIFIKASI ADMINISTRASI BENDAHARA (LEVEL 1)
+     ============================================================================ -->
+<div class="modal-backdrop" id="modalVerifikasiBendahara">
+    <div class="modal-dialog" style="max-width: 480px;">
+        <div class="modal-header">
+            <span class="panel-title">Verifikasi Pengajuan Pembiayaan (Level 1)</span>
+            <button type="button" class="icon-square-btn" onclick="tutupModalVerifikasiBendahara()">✕</button>
+        </div>
+        <form method="post" action="{% url 'verifikasi_pembiayaan_bendahara' pembiayaan.id %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); padding: 12px 14px; margin-bottom: 16px; font-size: 12.5px;">
+                    <div><strong>{{ pembiayaan.no_pembiayaan }}</strong> — {{ pembiayaan.anggota.nama }}</div>
+                    <div>Akad: {{ pembiayaan.jenis_akad.get_nama_display }} • Plafon: <strong>{{ pembiayaan.harga_pokok|rupiah }}</strong> ({{ pembiayaan.tenor_bulan }} bln)</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Keputusan Verifikasi Bendahara</label>
+                    <select name="keputusan" class="form-control" required>
+                        <option value="DISETUJUI">Setujui Administrasi &amp; Teruskan ke Ketua</option>
+                        <option value="DITOLAK">Tolak Pengajuan Pembiayaan</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Catatan Verifikasi</label>
+                    <input
+                        type="text"
+                        name="catatan"
+                        class="form-control"
+                        placeholder="Contoh: Berkas lengkap, rasio gaji mencukupi, diteruskan ke Ketua"
+                    >
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="tutupModalVerifikasiBendahara()">Batal</button>
+                <button type="submit" class="btn btn-primary-dark">Simpan Verifikasi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================================
+     MODAL CATAT REALISASI PENCAIRAN OFF-SYSTEM (UC-07 / SQ-06)
+     ============================================================================ -->
+<div class="modal-backdrop" id="modalRealisasiPencairan">
+    <div class="modal-dialog" style="max-width: 520px;">
+        <div class="modal-header">
+            <span class="panel-title">Catat Realisasi Pencairan</span>
+            <button type="button" class="icon-square-btn" onclick="tutupModalRealisasi()">✕</button>
+        </div>
+        <form method="post" action="{% url 'catat_realisasi_pencairan' pembiayaan.id %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div style="background: #f0fdf4; border: 1px solid #86efac; color: #166534; padding: 10px 14px; font-size: 12.5px; margin-bottom: 16px;">
+                    ✓ Pengeluaran kas untuk kontrak <strong>{{ pembiayaan.no_pembiayaan }}</strong> ({{ pembiayaan.anggota.nama }}) telah disetujui Ketua. Pencatatan ini akan mengaktifkan kontrak dan menerbitkan Kartu Jadwal Angsuran ({{ pembiayaan.tenor_bulan }} bulan).
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Tanggal Realisasi Cair</label>
+                        <input type="date" name="tanggal_realisasi" class="form-control" value="{{ hari_ini_iso }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Metode Pencairan</label>
+                        <select name="metode_pencairan" class="form-control" required>
+                            {% for val, label in metode_pencairan_choices %}
+                                <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Nomor Referensi Bank / Bukti Kas</label>
+                        <input
+                            type="text"
+                            name="nomor_referensi_bank"
+                            class="form-control"
+                            placeholder="Contoh: BNI-SLK-20261117"
+                            required
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nominal Dicairkan (Rp)</label>
+                        <input
+                            type="number"
+                            name="nominal_cair"
+                            class="form-control"
+                            value="{{ pembiayaan.harga_pokok|floatformat:0 }}"
+                            readonly
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Unggah Bukti Transfer / Tanda Terima Kas</label>
+                    <input type="file" name="bukti_transfer" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="padding-top: 6px;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="tutupModalRealisasi()">Batal</button>
+                <button type="submit" class="btn btn-primary-dark">Simpan Realisasi &amp; Terbitkan Jadwal</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function bukaModalRealisasi() {
+        const el = document.getElementById('modalRealisasiPencairan');
+        if (el) el.classList.add('open');
+    }
+    function tutupModalRealisasi() {
+        const el = document.getElementById('modalRealisasiPencairan');
+        if (el) el.classList.remove('open');
+    }
+    function bukaModalVerifikasiBendahara() {
+        const el = document.getElementById('modalVerifikasiBendahara');
+        if (el) el.classList.add('open');
+    }
+    function tutupModalVerifikasiBendahara() {
+        const el = document.getElementById('modalVerifikasiBendahara');
+        if (el) el.classList.remove('open');
+    }
+</script>
+{% endblock %}

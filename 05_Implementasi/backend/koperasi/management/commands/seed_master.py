@@ -12,9 +12,11 @@ from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from koperasi.models import (
+    Agunan,
     Anggota,
     AuditTrailLog,
     JadwalAngsuran,
+    JenisAgunanChoices,
     JenisAkad,
     JenisSimpanan,
     JenisTransaksiSimpananChoices,
@@ -353,3 +355,71 @@ class Command(BaseCommand):
                 surat_url='media/resign/surat_pensiun_hendra_wijaya.pdf',
             )
             self.stdout.write(self.style.SUCCESS('[OK] Data contoh transaksi, anggota tambahan & pengajuan resign berhasil ditambahkan.'))
+
+        if options.get('with_demo') and not Pembiayaan.objects.filter(no_pembiayaan='PMB-2026-002').exists():
+            anggota_siti = Anggota.objects.filter(no_anggota='KKP-2026-002').first()
+            if anggota_siti:
+                akad_ijr = JenisAkad.objects.get(kode='AKD-IJR')
+                akad_mrb = JenisAkad.objects.get(kode='AKD-MRB')
+
+                # Demo Pembiayaan #2: Siti Rahmah — Ijarah Rp 18.000.000 (Menunggu Persetujuan Ketua)
+                pmb_002 = Pembiayaan.simpanPengajuanBaru({
+                    'no_pembiayaan': 'PMB-2026-002',
+                    'anggota_id': anggota_siti.id,
+                    'jenis_akad_id': akad_ijr.id,
+                    'tanggal_pengajuan': date(2026, 11, 10),
+                    'harga_pokok': Decimal('18000000.00'),
+                    'margin_persen': Decimal('1.00'),
+                    'tenor_bulan': 18,
+                    'no_antrean': 1,
+                    'tujuan_pembiayaan': 'Biaya Pendidikan Studi Lanjut (S2) & Semester',
+                })
+                PersetujuanPembiayaan.simpanKeputusanOtorisasi(
+                    pembiayaan_id=pmb_002.id,
+                    pejabat_id=bendahara.id,
+                    keputusan=KeputusanOtorisasiChoices.DISETUJUI,
+                    catatan='Diverifikasi Bendahara, diteruskan ke Ketua untuk persetujuan kas.',
+                    level_persetujuan=1,
+                )
+                Pembiayaan.perbaruiStatusPembiayaan(
+                    pmb_002.id,
+                    StatusPembiayaanChoices.MENUNGGU_PERSETUJUAN_KETUA,
+                )
+
+                # Demo Pembiayaan #3: Siti Rahmah — Murabahah Rp 75.000.000 (> Rp 70 Jt + Agunan BPKB, Disetujui Ketua / Siap Cair)
+                pmb_003 = Pembiayaan.simpanPengajuanBaru({
+                    'no_pembiayaan': 'PMB-2026-003',
+                    'anggota_id': anggota_siti.id,
+                    'jenis_akad_id': akad_mrb.id,
+                    'tanggal_pengajuan': date(2026, 11, 12),
+                    'harga_pokok': Decimal('75000000.00'),
+                    'margin_persen': Decimal('1.00'),
+                    'tenor_bulan': 30,
+                    'no_antrean': 2,
+                    'tujuan_pembiayaan': 'Renovasi Rumah Tinggal (> Rp 70 Juta dengan Agunan BPKB)',
+                })
+                Agunan.simpanDataAgunan(pmb_003.id, {
+                    'jenis_agunan': JenisAgunanChoices.BPKB_MOBIL,
+                    'no_registrasi': 'BPKB-BA-1892-PK',
+                    'nilai_taksiran': Decimal('115000000.00'),
+                    'berkas_url': 'media/agunan/bpkb_mobil_siti_rahmah.pdf',
+                })
+                PersetujuanPembiayaan.simpanKeputusanOtorisasi(
+                    pembiayaan_id=pmb_003.id,
+                    pejabat_id=bendahara.id,
+                    keputusan=KeputusanOtorisasiChoices.DISETUJUI,
+                    catatan='Agunan BPKB Mobil asli telah diterima & diverifikasi Bendahara.',
+                    level_persetujuan=1,
+                )
+                PersetujuanPembiayaan.simpanKeputusanOtorisasi(
+                    pembiayaan_id=pmb_003.id,
+                    pejabat_id=ketua.id,
+                    keputusan=KeputusanOtorisasiChoices.DISETUJUI,
+                    catatan='Disetujui Ketua (Two-Man Rule), siap dicairkan oleh Bendahara.',
+                    level_persetujuan=2,
+                )
+                Pembiayaan.perbaruiStatusPembiayaan(
+                    pmb_003.id,
+                    StatusPembiayaanChoices.DISETUJUI_KETUA,
+                )
+                self.stdout.write(self.style.SUCCESS('[OK] Contoh antrean Persetujuan Kas & Siap Realisasi Pencairan (Tahap 5) berhasil ditambahkan.'))

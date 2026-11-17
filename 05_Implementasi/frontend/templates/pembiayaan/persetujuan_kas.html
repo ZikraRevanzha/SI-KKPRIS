@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+{% load kkpris_tags %}
+
+{% block title %}Persetujuan Kas — SI-KKPRIS{% endblock %}
+
+{% block content %}
+<!-- HEADER HALAMAN (Sesuai Wireframe: Persetujuan Kas.png — WD-18) -->
+<div class="page-header-row">
+    <div>
+        <h1 class="page-title">Persetujuan Kas</h1>
+        <p class="page-subtitle">
+            Otorisasi pengeluaran kas pembiayaan syariah oleh Ketua Koperasi (Two-Man Rule — UC-06) sebelum dicairkan Bendahara
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'kelola_pembiayaan' %}" class="btn btn-outline">Daftar Pembiayaan</a>
+    </div>
+</div>
+
+<!-- BARIS 3 KARTU STATISTIK (Sesuai Wireframe Persetujuan Kas.png: Pengajuan Kas, Menunggu Persetujuan, Disetujui) -->
+<div class="stats-grid-3">
+    <!-- Kartu #1: Pengajuan Kas -->
+    <div class="stat-card">
+        <div class="stat-icon-box">▤</div>
+        <div class="stat-body">
+            <div class="stat-label">Pengajuan Kas</div>
+            <div class="stat-value">{{ total_pengajuan_nominal|rupiah }}</div>
+            <div class="stat-meta">Total {{ total_pengajuan_count }} permohonan pengeluaran kas</div>
+        </div>
+    </div>
+
+    <!-- Kartu #2: Menunggu Persetujuan -->
+    <div class="stat-card">
+        <div class="stat-icon-box">⏳</div>
+        <div class="stat-body">
+            <div class="stat-label">Menunggu Persetujuan</div>
+            <div class="stat-value">{{ menunggu_count }} Pengajuan</div>
+            <div class="stat-meta">Total nilai: {{ menunggu_nominal|rupiah }}</div>
+        </div>
+    </div>
+
+    <!-- Kartu #3: Disetujui -->
+    <div class="stat-card">
+        <div class="stat-icon-box">✓</div>
+        <div class="stat-body">
+            <div class="stat-label">Disetujui</div>
+            <div class="stat-value">{{ disetujui_count }} Pengajuan</div>
+            <div class="stat-meta">Total disetujui: {{ disetujui_nominal|rupiah }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- TABEL PERSETUJUAN KAS (7 Kolom Eksak Sesuai Wireframe Persetujuan Kas.png: No, Tanggal, Keperluan, Jumlah, Diajukan Oleh, Status, Aksi) -->
+<div class="panel-card" style="margin-bottom: 0;">
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Tanggal</th>
+                    <th>Keperluan</th>
+                    <th>Jumlah</th>
+                    <th>Diajukan Oleh</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in daftar_baris %}
+                    {% with pmb=item.obj %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 700;">#{{ pmb.no_antrean }}</div>
+                            <div style="font-size: 11px; color: var(--text-muted);">{{ pmb.no_pembiayaan }}</div>
+                        </td>
+                        <td>{{ pmb.tanggal_pengajuan|date:"d/m/Y" }}</td>
+                        <td>
+                            <div style="font-weight: 600;">
+                                {{ pmb.jenis_akad.get_nama_display }} — {{ pmb.tujuan_pembiayaan }}
+                            </div>
+                            <div style="font-size: 11.5px; color: var(--text-muted);">
+                                Tenor {{ pmb.tenor_bulan }} bln • Angsuran {{ pmb.angsuran_bulanan|rupiah }}/bln
+                                {% if item.agunan %}
+                                    • 🛡 Agunan: {{ item.agunan.get_jenis_agunan_display }} ({{ item.agunan.no_registrasi }})
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td style="font-weight: 700;">{{ pmb.harga_pokok|rupiah }}</td>
+                        <td>
+                            <div class="member-info-primary">{{ pmb.anggota.nama }}</div>
+                            <div class="member-info-secondary">{{ pmb.anggota.no_anggota }}</div>
+                        </td>
+                        <td>
+                            {% if pmb.status == 'AKTIF' or pmb.status == 'LUNAS' %}
+                                <span class="status-badge success">{{ pmb.get_status_display }}</span>
+                            {% elif pmb.status == 'DISETUJUI_KETUA' %}
+                                <span class="status-badge success">Disetujui</span>
+                            {% elif pmb.status == 'DITOLAK' %}
+                                <span class="status-badge danger">Ditolak</span>
+                            {% else %}
+                                <span class="status-badge warning">{{ pmb.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            {% if pmb.status in 'MENUNGGU_VERIFIKASI,MENUNGGU_PERSETUJUAN_KETUA' and request.pengguna.peran == 'KETUA' %}
+                                <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline btn-sm"
+                                        onclick="bukaModalKonfirmasiPersetujuan('{{ pmb.id }}', '{{ pmb.no_pembiayaan|escapejs }}', '{{ pmb.anggota.nama|escapejs }} ({{ pmb.anggota.no_anggota|escapejs }})', '{{ pmb.jenis_akad.get_nama_display|escapejs }} — {{ pmb.tujuan_pembiayaan|escapejs }}', '{{ pmb.harga_pokok|rupiah|escapejs }}', '{{ pmb.tenor_bulan }} Bulan ({{ pmb.angsuran_bulanan|rupiah|escapejs }}/bln)', 'DITOLAK')"
+                                    >
+                                        Tolak
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-primary-dark btn-sm"
+                                        onclick="bukaModalKonfirmasiPersetujuan('{{ pmb.id }}', '{{ pmb.no_pembiayaan|escapejs }}', '{{ pmb.anggota.nama|escapejs }} ({{ pmb.anggota.no_anggota|escapejs }})', '{{ pmb.jenis_akad.get_nama_display|escapejs }} — {{ pmb.tujuan_pembiayaan|escapejs }}', '{{ pmb.harga_pokok|rupiah|escapejs }}', '{{ pmb.tenor_bulan }} Bulan ({{ pmb.angsuran_bulanan|rupiah|escapejs }}/bln)', 'DISETUJUI')"
+                                    >
+                                        Setujui
+                                    </button>
+                                </div>
+                            {% else %}
+                                <a href="{% url 'detail_pembiayaan' pmb.id %}" class="btn btn-outline btn-sm">
+                                    Detail
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endwith %}
+                {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 28px;">
+                            Belum ada permohonan pengeluaran kas pembiayaan.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- BARIS PAGINASI (Sesuai Tombol "Sebelumnya" & "Berikutnya" pada Persetujuan Kas.png) -->
+    <div class="table-pagination-bar">
+        <div class="pagination-info">
+            Menampilkan halaman {{ page_obj.number }} dari {{ page_obj.paginator.num_pages }}
+            (Total {{ page_obj.paginator.count }} pengajuan kas)
+        </div>
+        <div class="pagination-btn-group">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline btn-sm">
+                    Sebelumnya
+                </a>
+            {% else %}
+                <button type="button" class="btn btn-outline btn-sm" disabled style="opacity: 0.5; cursor: not-allowed;">
+                    Sebelumnya
+                </button>
+            {% endif %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline btn-sm">
+                    Berikutnya
+                </a>
+            {% else %}
+                <button type="button" class="btn btn-outline btn-sm" disabled style="opacity: 0.5; cursor: not-allowed;">
+                    Berikutnya
+                </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================================
+     MODAL KONFIRMASI PERSETUJUAN (Eksak Sesuai Wireframe: Konfirmasi Persetujuan.png)
+     ============================================================================ -->
+<div class="modal-backdrop" id="modalKonfirmasiPersetujuan">
+    <div class="modal-dialog" style="max-width: 520px;">
+        <div class="modal-header">
+            <span class="panel-title" id="judulModalKonfirmasi">Konfirmasi Persetujuan</span>
+            <button type="button" class="icon-square-btn" onclick="tutupModalKonfirmasiPersetujuan()">✕</button>
+        </div>
+
+        <form method="post" id="formKonfirmasiPersetujuan" action="">
+            {% csrf_token %}
+            <input type="hidden" name="keputusan" id="inputKeputusanOtorisasi" value="DISETUJUI">
+
+            <div class="modal-body" style="padding: 24px;">
+                <!-- STEPPER 2 TITIK TWO-MAN RULE: Bendahara ——— Ketua (Sesuai Konfirmasi Persetujuan.png) -->
+                <div class="two-man-stepper">
+                    <div class="two-man-node done">
+                        <div class="two-man-circle">✓</div>
+                        <span style="font-size: 12.5px; font-weight: 600; color: var(--text-secondary);">Bendahara</span>
+                    </div>
+
+                    <div class="two-man-line"></div>
+
+                    <div class="two-man-node active">
+                        <div class="two-man-circle">2</div>
+                        <span style="font-size: 12.5px; font-weight: 700; color: var(--text-primary);">Ketua</span>
+                    </div>
+                </div>
+
+                <!-- Ringkasan Detail Pengajuan Kas di Tengah Modal -->
+                <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); padding: 14px 16px; margin-bottom: 16px; text-align: center;">
+                    <div style="font-weight: 700; font-size: 14px; color: var(--text-primary); margin-bottom: 4px;" id="konf_anggota">
+                        -
+                    </div>
+                    <div style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 4px;" id="konf_keperluan">
+                        -
+                    </div>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--brand-dark);" id="konf_nominal_tenor">
+                        -
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="id_catatan_ketua">Catatan Otorisasi Ketua (Opsional)</label>
+                    <input
+                        type="text"
+                        id="id_catatan_ketua"
+                        name="catatan"
+                        class="form-control"
+                        placeholder="Contoh: Likuiditas kas koperasi mencukupi, disetujui untuk dicairkan"
+                    >
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="tutupModalKonfirmasiPersetujuan()">Batal</button>
+                <button type="submit" class="btn btn-primary-dark" id="btnSubmitKonfirmasi">Setujui</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function bukaModalKonfirmasiPersetujuan(idPmb, noPmb, namaAnggota, keperluan, nominal, tenorInfo, keputusan) {
+        const form = document.getElementById('formKonfirmasiPersetujuan');
+        form.action = '/persetujuan-kas/' + idPmb + '/proses/';
+        document.getElementById('inputKeputusanOtorisasi').value = keputusan;
+
+        document.getElementById('konf_anggota').textContent = noPmb + ' — ' + namaAnggota;
+        document.getElementById('konf_keperluan').textContent = keperluan;
+        document.getElementById('konf_nominal_tenor').textContent = 'Plafon: ' + nominal + ' • Tenor: ' + tenorInfo;
+
+        const btnSubmit = document.getElementById('btnSubmitKonfirmasi');
+        const judul = document.getElementById('judulModalKonfirmasi');
+        if (keputusan === 'DITOLAK') {
+            judul.textContent = 'Konfirmasi Penolakan Kas';
+            btnSubmit.textContent = 'Tolak';
+        } else {
+            judul.textContent = 'Konfirmasi Persetujuan';
+            btnSubmit.textContent = 'Setujui';
+        }
+
+        document.getElementById('modalKonfirmasiPersetujuan').classList.add('open');
+    }
+
+    function tutupModalKonfirmasiPersetujuan() {
+        document.getElementById('modalKonfirmasiPersetujuan').classList.remove('open');
+    }
+</script>
+{% endblock %}

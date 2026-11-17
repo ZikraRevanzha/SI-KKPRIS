@@ -1243,6 +1243,279 @@ body.sidebar-collapsed .main-wrapper {
     margin-bottom: 20px;
 }
 
+/* ============================================================================
+   5. KOMPONEN TAHAP 5: PEMBIAYAAN SYARIAH, WIZARD 3 LANGKAH, DETAIL PEMBIAYAAN,
+      & PERSETUJUAN KAS (TWO-MAN RULE)
+   ============================================================================ */
+
+.dashed-info-banner {
+    border: 1.5px dashed var(--border-color);
+    background-color: #ffffff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.wizard-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 6px 0 26px;
+    padding: 0 8px;
+}
+
+.wizard-step-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    padding: 4px 0;
+}
+
+.wizard-step-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    background-color: #e2e8f0;
+    display: inline-block;
+    transition: all 0.15s ease;
+}
+
+.wizard-step-item.active .wizard-step-dot {
+    background-color: var(--btn-dark);
+    border-color: var(--btn-dark);
+}
+
+.wizard-step-item.completed .wizard-step-dot {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.wizard-step-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.wizard-step-item.active .wizard-step-label {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.wizard-step-item.completed .wizard-step-label {
+    font-weight: 600;
+    color: var(--brand-dark);
+}
+
+.wizard-step-connector {
+    flex: 1;
+    height: 1.5px;
+    background-color: var(--border-color);
+    margin: 0 24px;
+}
+
+.akad-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.akad-select-card {
+    border: 1.5px solid var(--border-color);
+    background-color: #ffffff;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.akad-select-card:hover {
+    border-color: var(--brand-primary);
+}
+
+.akad-select-card.selected {
+    border-color: var(--btn-dark);
+    box-shadow: 0 0 0 1px var(--btn-dark);
+    background-color: #f8fafc;
+}
+
+.akad-visual-box {
+    border: 1px solid var(--border-color);
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    height: 124px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--text-secondary);
+}
+
+.akad-card-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.akad-card-desc {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    line-height: 1.45;
+}
+
+.preview-angsuran-box {
+    border: 1.5px solid var(--border-color);
+    background-color: #f8fafc;
+    padding: 18px 20px;
+    margin: 18px 0 22px;
+}
+
+.agunan-dashed-panel {
+    border: 1.5px dashed var(--border-color);
+    background-color: #ffffff;
+    padding: 24px;
+    margin-bottom: 22px;
+}
+
+.detail-pembiayaan-grid {
+    display: grid;
+    grid-template-columns: 1.9fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.ringkasan-akad-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 36px;
+    row-gap: 14px;
+}
+
+.ringkasan-kv-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border-subtle);
+}
+
+.ringkasan-kv-label {
+    color: var(--text-secondary);
+}
+
+.ringkasan-kv-val {
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: right;
+}
+
+.approval-timeline {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 0;
+}
+
+.timeline-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    position: relative;
+    padding-bottom: 26px;
+}
+
+.timeline-step:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 22px;
+    bottom: 4px;
+    width: 1.5px;
+    background-color: var(--border-color);
+}
+
+.timeline-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    background-color: #e2e8f0;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.timeline-step.done .timeline-dot {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.timeline-step.rejected .timeline-dot {
+    background-color: #dc2626;
+    border-color: #dc2626;
+}
+
+.two-man-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 20px 0 24px;
+}
+
+.two-man-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.two-man-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    background-color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.two-man-node.done .two-man-circle {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.two-man-node.active .two-man-circle {
+    background-color: var(--btn-dark);
+    border-color: var(--btn-dark);
+}
+
+.two-man-line {
+    width: 160px;
+    height: 1.5px;
+    background-color: var(--border-color);
+    margin-bottom: 22px;
+}
+
 @media (max-width: 1100px) {
     .login-container {
         grid-template-columns: 1fr;
@@ -1254,7 +1527,10 @@ body.sidebar-collapsed .main-wrapper {
     }
     .filter-toolbar,
     .resign-verify-grid,
-    .form-grid-2 {
+    .form-grid-2,
+    .akad-cards-grid,
+    .detail-pembiayaan-grid,
+    .ringkasan-akad-grid {
         grid-template-columns: 1fr;
     }
     .charts-row {

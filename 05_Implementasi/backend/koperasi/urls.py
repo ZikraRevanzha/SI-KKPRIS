@@ -6,6 +6,7 @@ from django.urls import path
 from koperasi.controllers import (
     anggota_controller,
     auth_controller,
+    pembiayaan_controller,
     simpanan_controller,
 )
 
@@ -54,19 +55,49 @@ urlpatterns = [
         name='cetak_kuitansi_simpanan',
     ),
 
-    # Rute Menu Sidebar untuk Tahap 5 s.d. Tahap 7 (Akan diaktifkan penuh per tahapan)
+    # Pembiayaan Syariah, Agunan, Approval Kas & Realisasi (Tahap 5 — UC-03, UC-04, UC-06, UC-07)
     path(
         'pembiayaan/',
-        auth_controller.modul_terjadwal_view,
-        {'nama_modul': 'Pembiayaan Syariah', 'tahap': 5},
+        pembiayaan_controller.kelola_pembiayaan_router_view,
         name='kelola_pembiayaan',
     ),
     path(
+        'pembiayaan/ajukan/',
+        pembiayaan_controller.ajukan_pembiayaan_view,
+        name='ajukan_pembiayaan',
+    ),
+    path(
+        'pembiayaan/ekspor/',
+        pembiayaan_controller.ekspor_pembiayaan_excel_view,
+        name='ekspor_pembiayaan_excel',
+    ),
+    path(
+        'pembiayaan/<int:pembiayaan_id>/',
+        pembiayaan_controller.detail_pembiayaan_view,
+        name='detail_pembiayaan',
+    ),
+    path(
+        'pembiayaan/<int:pembiayaan_id>/verifikasi/',
+        pembiayaan_controller.verifikasi_bendahara_view,
+        name='verifikasi_pembiayaan_bendahara',
+    ),
+    path(
+        'pembiayaan/<int:pembiayaan_id>/realisasi/',
+        pembiayaan_controller.catat_realisasi_pencairan_view,
+        name='catat_realisasi_pencairan',
+    ),
+    path(
         'persetujuan-kas/',
-        auth_controller.modul_terjadwal_view,
-        {'nama_modul': 'Persetujuan Pengeluaran Kas', 'tahap': 5},
+        pembiayaan_controller.persetujuan_kas_view,
         name='persetujuan_kas',
     ),
+    path(
+        'persetujuan-kas/<int:pembiayaan_id>/proses/',
+        pembiayaan_controller.proses_persetujuan_kas_view,
+        name='proses_persetujuan_kas',
+    ),
+
+    # Rute Menu Sidebar untuk Tahap 6 s.d. Tahap 7 (Akan diaktifkan penuh per tahapan)
     path(
         'angsuran/',
         auth_controller.modul_terjadwal_view,

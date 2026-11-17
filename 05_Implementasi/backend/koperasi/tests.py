@@ -529,5 +529,193 @@ class SIKKPRISModelsTestCase(TestCase):
         self.assertContains(resp_anggota_smp, 'Simpanan Saya')
         self.assertContains(resp_anggota_smp, 'Simpanan Terkunci')
 
+    def test_08_pembiayaan_controller_agunan_approval_realisasi_tahap_5(self):
+        """Menguji fitur Tahap 5: Wizard 3 Step Ajukan Pembiayaan, Agunan >70Jt, Persetujuan Kas Ketua & Realisasi."""
+        akad_mrb = JenisAkad.objects.get(kode='AKD-MRB')
+        akad_ijr = JenisAkad.objects.get(kode='AKD-IJR')
+
+        # 1. Login sebagai Anggota & buka halaman Wizard 3 Langkah Ajukan Pembiayaan (WD-19, WD-20, WD-21)
+        self.client.post('/login/', {'username': 'KKP-2026-001', 'password': 'Kkpris2026!'})
+        resp_wizard = self.client.get('/pembiayaan/ajukan/')
+        self.assertEqual(resp_wizard.status_code, 200)
+        self.assertTemplateUsed(resp_wizard, 'pembiayaan/ajukan_pembiayaan.html')
+        self.assertContains(resp_wizard, 'Pengajuan dibuka tanggal 1-20 setiap bulan')
+        self.assertContains(resp_wizard, 'Pilih Akad')
+        self.assertContains(resp_wizard, 'Nominal &amp; Tenor')
+        self.assertContains(resp_wizard, 'Pratinjau Angsuran')
+        self.assertContains(resp_wizard, 'Hanya muncul jika nominal &gt; Rp 70.000.000')
+
+        # 2. Ajukan Pembiayaan Ijarah <= Rp 70.000.000 (Tanpa Agunan: Rp 15.000.000, Tenor 10 bulan)
+        resp_ajukan_kecil = self.client.post(
+            '/pembiayaan/ajukan/',
+            {
+                'jenis_akad_id': akad_ijr.id,
+                'harga_pokok': '15000000',
+                'tenor_bulan': '10',
+                'margin_persen': '1.00',
+                'tujuan_pembiayaan': 'Biaya Pendidikan Kuliah Anak',
+                'tanggal_pengajuan': '2026-11-15',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_ajukan_kecil.status_code, 200)
+        pmb_kecil = Pembiayaan.objects.get(tujuan_pembiayaan='Biaya Pendidikan Kuliah Anak')
+        self.assertEqual(pmb_kecil.harga_pokok, Decimal('15000000.00'))
+        self.assertEqual(pmb_kecil.total_margin, Decimal('1500000.00'))
+        self.assertEqual(pmb_kecil.angsuran_bulanan, Decimal('1650000.00'))
+        self.assertEqual(pmb_kecil.status, StatusPembiayaanChoices.MENUNGGU_VERIFIKASI)
+
+        # 3. Proteksi BR-03: Pengajuan > Rp 70.000.000 TANPA agunan wajib ditolak
+        resp_tanpa_agunan = self.client.post(
+            '/pembiayaan/ajukan/',
+            {
+                'jenis_akad_id': akad_mrb.id,
+                'harga_pokok': '80000000',
+                'tenor_bulan': '20',
+                'margin_persen': '1.00',
+                'tujuan_pembiayaan': 'Pembelian Kendaraan Roda Empat Tanpa Agunan',
+                'tanggal_pengajuan': '2026-11-16',
+            },
+            follow=True,
+        )
+        self.assertContains(resp_tanpa_agunan, 'wajib melampirkan dokumen agunan')
+        self.assertFalse(
+            Pembiayaan.objects.filter(
+                tujuan_pembiayaan='Pembelian Kendaraan Roda Empat Tanpa Agunan'
+            ).exists()
+        )
+
+        # 4. Pengajuan > Rp 70.000.000 DENGAN Agunan BPKB berhasil disimpan (Rp 90.000.000, Tenor 18 bulan)
+        resp_dengan_agunan = self.client.post(
+            '/pembiayaan/ajukan/',
+            {
+                'jenis_akad_id': akad_mrb.id,
+                'harga_pokok': '90000000',
+                'tenor_bulan': '18',
+                'margin_persen': '1.00',
+                'tujuan_pembiayaan': 'Renovasi Rumah & Pengadaan Kendaraan',
+                'tanggal_pengajuan': '2026-11-16',
+                'jenis_agunan': JenisAgunanChoices.BPKB_MOBIL,
+                'no_registrasi': 'BPKB-BA-9988-SLK',
+                'nilai_taksiran': '135000000',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_dengan_agunan.status_code, 200)
+        pmb_besar = Pembiayaan.objects.get(tujuan_pembiayaan='Renovasi Rumah & Pengadaan Kendaraan')
+        self.assertEqual(pmb_besar.harga_pokok, Decimal('90000000.00'))
+        self.assertEqual(pmb_besar.angsuran_bulanan, Decimal('5900000.00'))
+        self.assertEqual(Agunan.objects.filter(pembiayaan=pmb_besar).count(), 1)
+
+        # 5. Buka halaman Pembiayaan Saya (Anggota)
+        resp_milik = self.client.get('/pembiayaan/')
+        self.assertEqual(resp_milik.status_code, 200)
+        self.assertTemplateUsed(resp_milik, 'pembiayaan/pembiayaan_saya.html')
+        self.assertContains(resp_milik, pmb_besar.no_pembiayaan)
+
+        # 6. Login sebagai Bendahara -> Buka Daftar Pembiayaan (WD-08) & Detail Pembiayaan (WD-09)
+        self.client.get('/logout/')
+        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+
+        resp_daftar = self.client.get('/pembiayaan/')
+        self.assertEqual(resp_daftar.status_code, 200)
+        self.assertTemplateUsed(resp_daftar, 'pembiayaan/daftar_pembiayaan.html')
+        self.assertContains(resp_daftar, 'Daftar Pembiayaan')
+        self.assertContains(resp_daftar, 'Total Pembiayaan')
+        self.assertContains(resp_daftar, 'Pembiayaan Aktif')
+
+        resp_detail = self.client.get(f'/pembiayaan/{pmb_besar.id}/')
+        self.assertEqual(resp_detail.status_code, 200)
+        self.assertTemplateUsed(resp_detail, 'pembiayaan/detail_pembiayaan.html')
+        self.assertContains(resp_detail, 'Ringkasan Akad')
+        self.assertContains(resp_detail, 'Status Persetujuan')
+        self.assertContains(
+            resp_detail,
+            'Pencairan fisik dana dilakukan di luar sistem; sistem hanya mencatat konfirmasi.',
+        )
+
+        # 7. Proteksi Two-Man Rule: Bendahara mencoba catat realisasi sebelum disetujui Ketua -> ditolak
+        resp_realisasi_dini = self.client.post(
+            f'/pembiayaan/{pmb_besar.id}/realisasi/',
+            {
+                'tanggal_realisasi': '2026-11-17',
+                'metode_pencairan': 'TRANSFER_BANK',
+                'nomor_referensi_bank': 'REF-GAGAL-001',
+                'nominal_cair': '90000000',
+            },
+            follow=True,
+        )
+        self.assertContains(resp_realisasi_dini, 'Two-Man Rule')
+        pmb_besar.refresh_from_db()
+        self.assertNotEqual(pmb_besar.status, StatusPembiayaanChoices.AKTIF)
+
+        # 8. Bendahara melakukan Verifikasi Level 1 -> status naik ke MENUNGGU_PERSETUJUAN_KETUA
+        resp_verif_bendahara = self.client.post(
+            f'/pembiayaan/{pmb_besar.id}/verifikasi/',
+            {
+                'keputusan': 'DISETUJUI',
+                'catatan': 'Agunan BPKB asli valid, diteruskan ke Ketua.',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_verif_bendahara.status_code, 200)
+        pmb_besar.refresh_from_db()
+        self.assertEqual(pmb_besar.status, StatusPembiayaanChoices.MENUNGGU_PERSETUJUAN_KETUA)
+
+        # 9. Login sebagai Ketua -> Buka Persetujuan Kas (WD-18 & Konfirmasi Persetujuan.png) & Setujui Kas
+        self.client.get('/logout/')
+        self.client.post('/login/', {'username': 'ketua', 'password': 'Kkpris2026!'})
+
+        resp_persetujuan_kas = self.client.get('/persetujuan-kas/')
+        self.assertEqual(resp_persetujuan_kas.status_code, 200)
+        self.assertTemplateUsed(resp_persetujuan_kas, 'pembiayaan/persetujuan_kas.html')
+        self.assertContains(resp_persetujuan_kas, 'Persetujuan Kas')
+        self.assertContains(resp_persetujuan_kas, 'Konfirmasi Persetujuan')
+        self.assertContains(resp_persetujuan_kas, pmb_besar.no_pembiayaan)
+
+        resp_approve_ketua = self.client.post(
+            f'/persetujuan-kas/{pmb_besar.id}/proses/',
+            {
+                'keputusan': 'DISETUJUI',
+                'catatan': 'Disetujui Ketua Koperasi untuk dicairkan.',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_approve_ketua.status_code, 200)
+        pmb_besar.refresh_from_db()
+        self.assertEqual(pmb_besar.status, StatusPembiayaanChoices.DISETUJUI_KETUA)
+
+        # 10. Login kembali sebagai Bendahara -> Catat Realisasi Pencairan & Auto-Generate Jadwal Angsuran
+        self.client.get('/logout/')
+        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+
+        resp_realisasi_valid = self.client.post(
+            f'/pembiayaan/{pmb_besar.id}/realisasi/',
+            {
+                'tanggal_realisasi': '2026-11-17',
+                'metode_pencairan': 'TRANSFER_BANK',
+                'nomor_referensi_bank': 'BNI-SOLOK-20261117',
+                'nominal_cair': '90000000',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_realisasi_valid.status_code, 200)
+        pmb_besar.refresh_from_db()
+        self.assertEqual(pmb_besar.status, StatusPembiayaanChoices.AKTIF)
+        self.assertEqual(
+            JadwalAngsuran.objects.filter(pembiayaan=pmb_besar).count(),
+            18,
+        )
+        self.assertTrue(RealisasiPencairan.objects.filter(pembiayaan=pmb_besar).exists())
+
+        # 11. Uji Ekspor Excel Daftar Pembiayaan (.xlsx)
+        resp_excel_pmb = self.client.get('/pembiayaan/ekspor/')
+        self.assertEqual(resp_excel_pmb.status_code, 200)
+        self.assertEqual(
+            resp_excel_pmb['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+
 
 
