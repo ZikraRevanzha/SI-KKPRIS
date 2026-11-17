@@ -15,16 +15,19 @@ from koperasi.models import (
     Agunan,
     Anggota,
     AuditTrailLog,
+    DetailRekapPotongGaji,
     JadwalAngsuran,
     JenisAgunanChoices,
     JenisAkad,
     JenisSimpanan,
     JenisTransaksiSimpananChoices,
+    KanalNotifikasiChoices,
     KeputusanOtorisasiChoices,
     MetodeBayarChoices,
     MetodeMarginChoices,
     MetodePencairanChoices,
     NamaAkadChoices,
+    NotifikasiTagihan,
     PembayaranAngsuran,
     Pembiayaan,
     Pengguna,
@@ -32,8 +35,10 @@ from koperasi.models import (
     PeranPenggunaChoices,
     PersetujuanPembiayaan,
     RealisasiPencairan,
+    RekapPotongGaji,
     StatusAnggotaChoices,
     StatusKepegawaianChoices,
+    StatusKirimNotifikasiChoices,
     StatusPembiayaanChoices,
     TransaksiSimpanan,
 )
@@ -423,3 +428,47 @@ class Command(BaseCommand):
                     StatusPembiayaanChoices.DISETUJUI_KETUA,
                 )
                 self.stdout.write(self.style.SUCCESS('[OK] Contoh antrean Persetujuan Kas & Siap Realisasi Pencairan (Tahap 5) berhasil ditambahkan.'))
+
+        if options.get('with_demo') and not RekapPotongGaji.objects.filter(periode_bulan='2026-11').exists():
+            pmb_001 = Pembiayaan.objects.filter(no_pembiayaan='PMB-2026-001').first()
+            anggota_siti = Anggota.objects.filter(no_anggota='KKP-2026-002').first()
+            if pmb_001 and anggota_siti:
+                jadwal_ke_5 = JadwalAngsuran.objects.filter(pembiayaan=pmb_001, angsuran_ke=5).first()
+                rekap_nov = RekapPotongGaji.buatHeaderRekap('2026-11', bendahara.id, kode_rekap='RKP-202611')
+                DetailRekapPotongGaji.simpanRincianRekapAnggota(rekap_nov.id, [
+                    {
+                        'anggota_id': anggota_budi.id,
+                        'jadwal_angsuran_id': jadwal_ke_5.id if jadwal_ke_5 else None,
+                        'nominal_simpanan_wajib': Decimal('150000.00'),
+                        'nominal_simpanan_sukarela': Decimal('75000.00'),
+                        'nominal_angsuran': Decimal('2240000.00'),
+                        'subtotal_potongan': Decimal('2465000.00'),
+                    },
+                    {
+                        'anggota_id': anggota_siti.id,
+                        'jadwal_angsuran_id': None,
+                        'nominal_simpanan_wajib': Decimal('150000.00'),
+                        'nominal_simpanan_sukarela': Decimal('50000.00'),
+                        'nominal_angsuran': Decimal('0.00'),
+                        'subtotal_potongan': Decimal('200000.00'),
+                    },
+                ])
+                rekap_nov.total_simpanan_wajib = Decimal('300000.00')
+                rekap_nov.total_angsuran = Decimal('2240000.00')
+                rekap_nov.total_tagihan = Decimal('2665000.00')
+                rekap_nov.save()
+
+                if jadwal_ke_5:
+                    NotifikasiTagihan.simpanLogNotifikasi({
+                        'anggota_id': anggota_budi.id,
+                        'jadwal_angsuran_id': jadwal_ke_5.id,
+                        'bendahara_id': bendahara.id,
+                        'kanal_kirim': KanalNotifikasiChoices.WHATSAPP,
+                        'tujuan_kirim': anggota_budi.no_hp,
+                        'isi_pesan': (
+                            'Pengingat tagihan tanggal 10 Koperasi KKPRIS: Angsuran ke-5 PMB-2026-001 '
+                            'sebesar Rp 2.240.000 + Simpanan Wajib Rp 150.000.'
+                        ),
+                        'status_kirim': StatusKirimNotifikasiChoices.TERKIRIM,
+                    })
+                self.stdout.write(self.style.SUCCESS('[OK] Contoh Rekap Potong Gaji Tanggal 24 & Log Notifikasi Tagihan (Tahap 6) berhasil ditambahkan.'))

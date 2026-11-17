@@ -10,14 +10,8 @@
 ## 📅 17 November 2026
 
 ### 🎯 Fokus / Tahapan Pengerjaan
-* **Tahap 5:** Implementasi Modul **Pembiayaan Syariah, Agunan, Approval Kas & Realisasi (`PembiayaanController` — `UC-03`, `UC-04`, `UC-06`, `UC-07` | `FR-FIN-01` s.d. `FR-FIN-06`, `BR-01` s.d. `BR-05`)** beserta ke-7 rancangan halaman UI Wireframe Final:
-  1. `Ajukan Pembiayaan — Pilih Akad.png` (`WD-19`)
-  2. `Ajukan Pembiayaan — Nominal & Tenor.png` (`WD-20`)
-  3. `Ajukan Pembiayaan — Agunan.png` (`WD-21`)
-  4. `Daftar Pembiayaan.png` (`WD-08`)
-  5. `Detail Pembiayaan.png` (`WD-09`)
-  6. `Persetujuan Kas.png` (`WD-18`)
-  7. `Konfirmasi Persetujuan.png` (Modal Konfirmasi Persetujuan *Two-Man Rule*)
+* **Tahap 5:** Implementasi Modul **Pembiayaan Syariah, Agunan, Approval Kas & Realisasi (`PembiayaanController` — `UC-03`, `UC-04`, `UC-06`, `UC-07` | `FR-FIN-01` s.d. `FR-FIN-06`, `BR-01` s.d. `BR-05`)** beserta ke-7 rancangan halaman UI Wireframe Final (`Ajukan Pembiayaan — Pilih Akad.png`, `Ajukan Pembiayaan — Nominal & Tenor.png`, `Ajukan Pembiayaan — Agunan.png`, `Daftar Pembiayaan.png`, `Detail Pembiayaan.png`, `Persetujuan Kas.png`, dan `Konfirmasi Persetujuan.png`).
+* **Tahap 6:** Implementasi Modul **Rekap Potong Gaji (Tgl 24), Kelola Angsuran & Notifikasi Tagihan (`RekapNotifikasiController` — `UC-11`, `UC-12`, `UC-13`, `UC-14` | `FR-ANG-01` s.d. `FR-ANG-03`, `FR-RKP-01` s.d. `FR-RKP-03`, `FR-NTF-01`)** beserta halaman UI `Kelola Angsuran.png`, `Cetak Bukti Pembayaran.png`, `Rekap Potong Gaji.png`, dan `Notifikasi Tagihan.png`.
 
 ### 🛠️ Rincian Perubahan
 1. **Implementasi `PembiayaanController` (`05_Implementasi/backend/koperasi/controllers/pembiayaan_controller.py`):**
@@ -34,23 +28,24 @@
    * `frontend/templates/pembiayaan/detail_pembiayaan.html`: tata letak 2 kolom yang memuat panel **Ringkasan Akad** (beserta info Agunan), tabel **Jadwal Angsuran** berpaginasi, panel **Status Persetujuan** (*vertical stepper*: `Diajukan` $\rightarrow$ `Disetujui Ketua` $\rightarrow$ `Direalisasikan`), kotak catatan pencairan *off-system*, serta modal **Catat Realisasi Pencairan** dan **Verifikasi Bendahara**.
    * `frontend/templates/pembiayaan/persetujuan_kas.html`: halaman khusus Ketua Koperasi dengan 3 kartu statistik (`Pengajuan Kas`, `Menunggu Persetujuan`, `Disetujui`), tabel antrean persetujuan kas, dan modal **Konfirmasi Persetujuan** ber-stepper horizontal 2 titik (`Bendahara` ——— `Ketua`).
    * `frontend/templates/pembiayaan/pembiayaan_saya.html`: portal mandiri Anggota (`Pembiayaan Saya`) untuk memantau daftar kontrak pembiayaan pribadi, nomor antrean, dan progress pelunasan.
-3. **Pembaruan Routing, Seeder & Unit Test:**
-   * Mengaktifkan rute `/pembiayaan/`, `/pembiayaan/ajukan/`, `/pembiayaan/ekspor/`, `/pembiayaan/<id>/`, `/pembiayaan/<id>/verifikasi/`, `/pembiayaan/<id>/realisasi/`, `/persetujuan-kas/`, dan `/persetujuan-kas/<id>/proses/` pada `backend/koperasi/urls.py` serta memperbarui tautan navigasi pada `frontend/templates/base.html`.
-   * Memperkaya `seed_master --with-demo` dengan contoh kontrak pembiayaan berstatus `MENUNGGU_PERSETUJUAN_KETUA` (`PMB-2026-002`) dan `DISETUJUI_KETUA` berplafon $> \text{Rp }70\text{ Juta}$ lengkap dengan Agunan BPKB (`PMB-2026-003`).
-   * Menambahkan `test_08_pembiayaan_controller_agunan_approval_realisasi_tahap_5` pada `backend/koperasi/tests.py`.
+3. **Implementasi Tahap 6: `RekapNotifikasiController` & Layar UI Angsuran, Rekap Gaji, dan Notifikasi (`05_Implementasi/backend/koperasi/controllers/rekap_notifikasi_controller.py`, `frontend/templates/angsuran/`):**
+   * Membangun `RekapNotifikasiController` dengan method `generateRekapPotongGaji()`, `perbaruiPotonganTambahanAnggota()`, `konfirmasiPelunasanKolektif()`, `eksporFileRekapGaji()`, dan `kirimNotifikasiTagihan()`.
+   * `frontend/templates/angsuran/kelola_angsuran.html` (`Kelola Angsuran.png` & `Cetak Bukti Pembayaran.png`) dan `kuitansi_angsuran_print.html`: filter `Pilih Pembiayaan` (`Anggota` & `Akad`), 3 kartu statistik (`Total Pembiayaan`, `Terbayar`, `Sisa`), tabel jadwal & pembayaran angsuran, modal input **Catat Pembayaran**, serta dialog & lembar cetak **Cetak Bukti Pembayaran**.
+   * `frontend/templates/angsuran/rekap_potong_gaji.html` (`Rekap Potong Gaji.png`) dan `rekap_potong_gaji_pdf.html`: *One-Click Generator* `Generate Rekap` tanggal 24, pemilih `Periode`, tabel rincian (`Anggota`, `Simpanan Wajib`, `Angsuran`, `Belanja Toko`, `Total Potongan`, `Aksi`) beserta baris bawah `Total`, ekspor **Excel (`.xlsx`) & PDF (`.pdf`)** untuk Bendahara Gaji Sekolah, serta **Konfirmasi Lunas Kolektif** yang otomatis membukukan Simpanan Wajib & melunasi angsuran secara *batch*.
+   * `frontend/templates/angsuran/notifikasi_tagihan.html` (`Notifikasi Tagihan.png`): tata letak 2 kolom (`Daftar Penerima` dengan pencarian & pemilihan anggota, serta `Pengaturan Pesan` dengan pilihan kanal `WhatsApp`/`Email`, jadwal `Setiap tanggal 10`, dan `Pratinjau Pesan`).
+4. **Pembaruan Routing, Seeder & Unit Test:**
+   * Mengaktifkan seluruh rute Tahap 5 & Tahap 6 pada `backend/koperasi/urls.py` serta memperkaya `seed_master --with-demo`.
+   * Menambahkan `test_08_pembiayaan_controller_agunan_approval_realisasi_tahap_5` dan `test_09_rekap_potong_gaji_kelola_angsuran_dan_notifikasi_tahap_6` pada `backend/koperasi/tests.py` (seluruh 9 skenario pengujian lulus 100% — **OK**).
 
 ### 💬 Pesan Commit Terkait
 ```text
 feat(pembiayaan): tambah modul pembiayaan syariah
-
-- Bangun PembiayaanController untuk pengajuan akad, agunan, approval kas, dan realisasi
-- Tambah 7 layar UI wizard pengajuan, daftar, detail, serta persetujuan kas Ketua
-- Tambah unit test integrasi Tahap 5 dan perbarui dokumentasi log pengerjaan
+feat(rekap): tambah modul rekap gaji dan angsuran
 ```
 
 ### 📌 Status & Rencana Selanjutnya
-* **Status Hari Ini:** **Tahap 5** (`PembiayaanController`, Wizard 3 Langkah Ajukan Pembiayaan, Validasi Agunan $> \text{Rp }70\text{ Juta}$, Persetujuan Kas Ketua *Two-Man Rule*, & Realisasi Pencairan + Auto-Generate Jadwal Angsuran) selesai 100%.
-* **Rencana Berikutnya (Tahap 6):** Implementasi **Rekap Potong Gaji (Tgl 24), Angsuran & Notifikasi (`RekapNotifikasiController` — `UC-11`, `UC-12`, `UC-14`)** beserta 3 halaman UI (`Kelola Angsuran.png`, `Rekap Potong Gaji.png`, dan `Notifikasi Tagihan.png`).
+* **Status Hari Ini:** **Tahap 5** (`PembiayaanController` & 7 layar UI) dan **Tahap 6** (`RekapNotifikasiController`, Kelola Angsuran, Cetak Bukti Pembayaran, Rekap Potong Gaji Tgl 24, & Notifikasi Tagihan Tgl 10) selesai 100%.
+* **Rencana Berikutnya (Tahap 7):** Implementasi **Laporan Keuangan Triwulanan & Tahunan RAT (SHU & Neraca), Kuitansi PDF & Final QA (`LaporanBuktiController` — `UC-13`, `UC-15`)** beserta layar `Laporan Keuangan.png`.
 
 ---
 

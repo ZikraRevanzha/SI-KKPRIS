@@ -716,6 +716,165 @@ class SIKKPRISModelsTestCase(TestCase):
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
 
+    def test_09_rekap_potong_gaji_kelola_angsuran_dan_notifikasi_tahap_6(self):
+        """Menguji fitur Tahap 6: Kelola Angsuran, Cetak Bukti Pembayaran, Rekap Potong Gaji (Tgl 24) & Notifikasi (Tgl 10)."""
+        akad_mrb = JenisAkad.objects.get(kode='AKD-MRB')
+
+        # Siapkan 1 pembiayaan AKTIF dengan 6 jadwal angsuran
+        pmb = Pembiayaan.simpanPengajuanBaru({
+            'no_pembiayaan': 'PMB-2026-601',
+            'anggota_id': self.anggota.id,
+            'jenis_akad_id': akad_mrb.id,
+            'tanggal_pengajuan': date(2026, 10, 10),
+            'harga_pokok': Decimal('12000000.00'),
+            'margin_persen': Decimal('1.00'),
+            'tenor_bulan': 6,
+            'no_antrean': 1,
+            'tujuan_pembiayaan': 'Pengadaan Peralatan Praktik Kejuruan',
+        })
+        PersetujuanPembiayaan.simpanKeputusanOtorisasi(
+            pembiayaan_id=pmb.id,
+            pejabat_id=self.ketua.id,
+            keputusan=KeputusanOtorisasiChoices.DISETUJUI,
+            catatan='Disetujui Ketua',
+            level_persetujuan=2,
+        )
+        Pembiayaan.perbaruiStatusPembiayaan(pmb.id, StatusPembiayaanChoices.DISETUJUI_KETUA)
+        RealisasiPencairan.simpanRealisasiPencairan(pmb.id, {
+            'bendahara_id': self.bendahara.id,
+            'tanggal_realisasi': date(2026, 10, 12),
+            'metode_pencairan': MetodePencairanChoices.TRANSFER_BANK,
+            'nomor_referensi_bank': 'REF-601',
+            'nominal_cair': Decimal('12000000.00'),
+            'bukti_transfer_url': 'media/pencairan/ref601.pdf',
+        })
+        Pembiayaan.perbaruiStatusPembiayaan(pmb.id, StatusPembiayaanChoices.AKTIF, tanggal_cair=date(2026, 10, 12))
+        JadwalAngsuran.generateJadwalAngsuran(
+            pembiayaan_id=pmb.id,
+            tenor_bulan=6,
+            porsi_pokok=Decimal('2000000.00'),
+            porsi_margin=Decimal('120000.00'),
+            tanggal_mulai=date(2026, 10, 12),
+        )
+        jadwal_1 = JadwalAngsuran.objects.get(pembiayaan=pmb, angsuran_ke=1)
+        jadwal_2 = JadwalAngsuran.objects.get(pembiayaan=pmb, angsuran_ke=2)
+
+        # 1. Login sebagai Bendahara & buka halaman Kelola Angsuran (WD-10)
+        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+        resp_ang = self.client.get('/angsuran/')
+        self.assertEqual(resp_ang.status_code, 200)
+        self.assertTemplateUsed(resp_ang, 'angsuran/kelola_angsuran.html')
+        self.assertContains(resp_ang, 'Kelola Angsuran')
+        self.assertContains(resp_ang, 'Pilih Pembiayaan')
+        self.assertContains(resp_ang, 'Total Pembiayaan')
+        self.assertContains(resp_ang, 'Terbayar')
+        self.assertContains(resp_ang, 'Sisa')
+        self.assertContains(resp_ang, 'Catat Pembayaran')
+
+        # 2. Catat Pembayaran Cicilan Mandiri untuk Angsuran ke-1 -> Memunculkan Modal Cetak Bukti Pembayaran (WD-11)
+        resp_bayar_1 = self.client.post(
+            f'/angsuran/{jadwal_1.id}/bayar/',
+            {
+                'nominal_bayar': '2120000',
+                'potongan_margin': '0',
+                'metode_bayar': 'TUNAI',
+                'nomor_referensi': 'TUNAI-KASIR-01',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_bayar_1.status_code, 200)
+        self.assertContains(resp_bayar_1, 'Cetak Bukti Pembayaran')
+        jadwal_1.refresh_from_db()
+        self.assertEqual(jadwal_1.status_bayar, StatusBayarAngsuranChoices.LUNAS)
+
+        bukti_1 = PembayaranAngsuran.objects.get(jadwal_angsuran=jadwal_1)
+        resp_print_ang = self.client.get(f'/angsuran/kuitansi/{bukti_1.no_kuitansi}/')
+        self.assertEqual(resp_print_ang.status_code, 200)
+        self.assertTemplateUsed(resp_print_ang, 'angsuran/kuitansi_angsuran_print.html')
+
+        # 3. Buka halaman Notifikasi Tagihan (WD-13) & Kirim Notifikasi Pengingat Tanggal 10 (WA & Email)
+        resp_notif_page = self.client.get('/notifikasi-tagihan/')
+        self.assertEqual(resp_notif_page.status_code, 200)
+        self.assertTemplateUsed(resp_notif_page, 'angsuran/notifikasi_tagihan.html')
+        self.assertContains(resp_notif_page, 'Daftar Penerima')
+        self.assertContains(resp_notif_page, 'Pengaturan Pesan')
+        self.assertContains(resp_notif_page, 'Setiap tanggal 10')
+        self.assertContains(resp_notif_page, 'Pratinjau Pesan')
+
+        resp_kirim_notif = self.client.post(
+            '/notifikasi-tagihan/',
+            {
+                'jadwal_ids': [str(jadwal_2.id)],
+                'kanal': ['WHATSAPP', 'EMAIL'],
+                'jadwal_pengiriman': 'Setiap tanggal 10',
+                'isi_pesan': 'Pengingat tagihan angsuran ke-{angsuran_ke} sebesar {nominal} untuk {nama}.',
+            },
+            follow=True,
+        )
+        self.assertEqual(resp_kirim_notif.status_code, 200)
+        self.assertEqual(NotifikasiTagihan.objects.filter(jadwal_angsuran=jadwal_2).count(), 2)
+
+        # 4. Buka halaman Rekap Potong Gaji (WD-12) & Generate Rekap Tanggal 24 (Periode 2026-12)
+        resp_rekap_page = self.client.get('/rekap-potong-gaji/')
+        self.assertEqual(resp_rekap_page.status_code, 200)
+        self.assertTemplateUsed(resp_rekap_page, 'angsuran/rekap_potong_gaji.html')
+        self.assertContains(resp_rekap_page, 'Rekap dibuat tanggal 24')
+        self.assertContains(resp_rekap_page, 'Belanja Toko')
+
+        resp_gen = self.client.post(
+            '/rekap-potong-gaji/generate/',
+            {'periode': '2026-12'},
+            follow=True,
+        )
+        self.assertEqual(resp_gen.status_code, 200)
+        rekap_des = RekapPotongGaji.objects.get(periode_bulan='2026-12')
+        self.assertEqual(rekap_des.total_simpanan_wajib, Decimal('150000.00'))
+        self.assertEqual(rekap_des.total_angsuran, Decimal('2120000.00'))
+        self.assertEqual(rekap_des.total_tagihan, Decimal('2270000.00'))
+
+        # 5. Update Potongan Belanja Toko Anggota (Rp 80.000) -> Total Tagihan menjadi Rp 2.350.000
+        detail_budi = DetailRekapPotongGaji.objects.get(rekap_potong_gaji=rekap_des, anggota=self.anggota)
+        resp_toko = self.client.post(
+            f'/rekap-potong-gaji/detail/{detail_budi.id}/update-toko/',
+            {'nominal_simpanan_sukarela': '80000'},
+            follow=True,
+        )
+        self.assertEqual(resp_toko.status_code, 200)
+        rekap_des.refresh_from_db()
+        self.assertEqual(rekap_des.total_tagihan, Decimal('2350000.00'))
+
+        # 6. Ekspor Rekap Potong Gaji ke Excel (.xlsx) & PDF (.pdf)
+        resp_rekap_xlsx = self.client.get(f'/rekap-potong-gaji/{rekap_des.id}/ekspor/?format=xlsx')
+        self.assertEqual(resp_rekap_xlsx.status_code, 200)
+        self.assertEqual(
+            resp_rekap_xlsx['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+        resp_rekap_pdf = self.client.get(f'/rekap-potong-gaji/{rekap_des.id}/ekspor/?format=pdf')
+        self.assertEqual(resp_rekap_pdf.status_code, 200)
+        self.assertEqual(resp_rekap_pdf['Content-Type'], 'application/pdf')
+
+        # 7. Konfirmasi Pelunasan Kolektif Batch -> Otomatis membukukan Simpanan Wajib & melunasi Angsuran ke-2
+        resp_lunas_batch = self.client.post(
+            f'/rekap-potong-gaji/{rekap_des.id}/konfirmasi-lunas/',
+            {'nomor_referensi_transfer': 'TRF-GAJI-DES-2026'},
+            follow=True,
+        )
+        self.assertEqual(resp_lunas_batch.status_code, 200)
+        rekap_des.refresh_from_db()
+        jadwal_2.refresh_from_db()
+        self.assertEqual(rekap_des.status_rekap, 'LUNAS_KOLEKTIF')
+        self.assertEqual(jadwal_2.status_bayar, StatusBayarAngsuranChoices.LUNAS)
+        self.assertTrue(
+            TransaksiSimpanan.objects.filter(
+                anggota=self.anggota,
+                jenis_simpanan__kode='SWJ',
+                metode_bayar='POTONG_GAJI',
+            ).exists()
+        )
+
+
 
 
 

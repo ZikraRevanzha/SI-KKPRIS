@@ -7,6 +7,7 @@ from koperasi.controllers import (
     anggota_controller,
     auth_controller,
     pembiayaan_controller,
+    rekap_notifikasi_controller,
     simpanan_controller,
 )
 
@@ -97,25 +98,54 @@ urlpatterns = [
         name='proses_persetujuan_kas',
     ),
 
-    # Rute Menu Sidebar untuk Tahap 6 s.d. Tahap 7 (Akan diaktifkan penuh per tahapan)
+    # Rekap Potong Gaji (Tgl 24), Kelola Angsuran & Notifikasi Tagihan (Tahap 6 — UC-11, UC-12, UC-14)
     path(
         'angsuran/',
-        auth_controller.modul_terjadwal_view,
-        {'nama_modul': 'Kelola Angsuran', 'tahap': 6},
+        rekap_notifikasi_controller.kelola_angsuran_view,
         name='kelola_angsuran',
     ),
     path(
+        'angsuran/<int:jadwal_id>/bayar/',
+        rekap_notifikasi_controller.catat_pembayaran_angsuran_view,
+        name='catat_pembayaran_angsuran',
+    ),
+    path(
+        'angsuran/kuitansi/<str:no_kuitansi>/',
+        rekap_notifikasi_controller.cetak_kuitansi_angsuran_view,
+        name='cetak_kuitansi_angsuran',
+    ),
+    path(
         'rekap-potong-gaji/',
-        auth_controller.modul_terjadwal_view,
-        {'nama_modul': 'Rekap Potong Gaji (Tgl 24)', 'tahap': 6},
+        rekap_notifikasi_controller.rekap_potong_gaji_view,
         name='rekap_potong_gaji',
     ),
     path(
+        'rekap-potong-gaji/generate/',
+        rekap_notifikasi_controller.generate_rekap_potong_gaji_view,
+        name='generate_rekap_potong_gaji',
+    ),
+    path(
+        'rekap-potong-gaji/detail/<int:detail_id>/update-toko/',
+        rekap_notifikasi_controller.update_potongan_toko_rekap_view,
+        name='update_potongan_toko_rekap',
+    ),
+    path(
+        'rekap-potong-gaji/<int:rekap_id>/konfirmasi-lunas/',
+        rekap_notifikasi_controller.konfirmasi_lunas_rekap_gaji_view,
+        name='konfirmasi_lunas_rekap_gaji',
+    ),
+    path(
+        'rekap-potong-gaji/<int:rekap_id>/ekspor/',
+        rekap_notifikasi_controller.ekspor_rekap_potong_gaji_view,
+        name='ekspor_rekap_potong_gaji',
+    ),
+    path(
         'notifikasi-tagihan/',
-        auth_controller.modul_terjadwal_view,
-        {'nama_modul': 'Notifikasi Tagihan (Tgl 10)', 'tahap': 6},
+        rekap_notifikasi_controller.notifikasi_tagihan_view,
         name='notifikasi_tagihan',
     ),
+
+    # Rute Menu Sidebar untuk Tahap 7 (Akan diaktifkan penuh pada Tahap 7)
     path(
         'laporan-keuangan/',
         auth_controller.modul_terjadwal_view,

@@ -1516,6 +1516,82 @@ body.sidebar-collapsed .main-wrapper {
     margin-bottom: 22px;
 }
 
+/* ============================================================================
+   6. KOMPONEN TAHAP 6: KELOLA ANGSURAN, REKAP POTONG GAJI (TGL 24),
+      & NOTIFIKASI TAGIHAN (TGL 10)
+   ============================================================================ */
+
+.rekap-periode-bar {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 18px;
+    align-items: stretch;
+    margin-bottom: 20px;
+}
+
+.rekap-periode-box {
+    background-color: #ffffff;
+    border: 1.5px solid var(--border-color);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+}
+
+.rekap-info-box {
+    background-color: #ffffff;
+    border: 1.5px solid var(--border-color);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.data-table tr.table-total-row td {
+    background-color: #e2e8f0;
+    font-weight: 700;
+    color: var(--text-primary);
+    border-top: 1.5px solid var(--border-color);
+    border-bottom: 1.5px solid var(--border-color);
+}
+
+.notifikasi-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.recipient-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.recipient-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.recipient-item:hover {
+    background-color: var(--bg-subtle);
+}
+
+.recipient-item:last-child {
+    border-bottom: none;
+}
+
+.message-preview-box {
+    background-color: #e2e8f0;
+    border: 1.5px solid var(--border-color);
+    padding: 16px;
+    min-height: 220px;
+}
+
 @media (max-width: 1100px) {
     .login-container {
         grid-template-columns: 1fr;
@@ -1530,7 +1606,9 @@ body.sidebar-collapsed .main-wrapper {
     .form-grid-2,
     .akad-cards-grid,
     .detail-pembiayaan-grid,
-    .ringkasan-akad-grid {
+    .ringkasan-akad-grid,
+    .rekap-periode-bar,
+    .notifikasi-grid {
         grid-template-columns: 1fr;
     }
     .charts-row {
