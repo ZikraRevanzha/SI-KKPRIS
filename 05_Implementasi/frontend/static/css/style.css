@@ -1592,6 +1592,59 @@ body.sidebar-collapsed .main-wrapper {
     min-height: 220px;
 }
 
+/* ============================================================================
+   7. KOMPONEN TAHAP 7: LAPORAN KEUANGAN (TRIWULANAN & RAT), KUITANSI PDF,
+      & JEJAK AUDIT SISTEM (AUDIT TRAIL LOG)
+   ============================================================================ */
+
+.report-tabs-bar {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    border-bottom: 1.5px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.report-tab-link {
+    padding: 10px 4px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-bottom: 2.5px solid transparent;
+    margin-bottom: -1.5px;
+    transition: all 0.15s ease;
+}
+
+.report-tab-link:hover {
+    color: var(--text-primary);
+}
+
+.report-tab-link.active {
+    color: var(--text-primary);
+    font-weight: 700;
+    border-bottom-color: var(--btn-dark);
+}
+
+.report-filter-bar {
+    background-color: #ffffff;
+    border: 1.5px solid var(--border-color);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.rat-visual-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 24px;
+    background-color: #f8fafc;
+    border: 1.5px solid var(--border-color);
+    padding: 20px;
+}
+
 @media (max-width: 1100px) {
     .login-container {
         grid-template-columns: 1fr;
@@ -1608,7 +1661,8 @@ body.sidebar-collapsed .main-wrapper {
     .detail-pembiayaan-grid,
     .ringkasan-akad-grid,
     .rekap-periode-bar,
-    .notifikasi-grid {
+    .notifikasi-grid,
+    .rat-visual-grid {
         grid-template-columns: 1fr;
     }
     .charts-row {

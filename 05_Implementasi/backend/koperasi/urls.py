@@ -1,11 +1,12 @@
 """
-URL Routing Aplikasi Koperasi SI-KKPRIS.
+URL Routing Aplikasi Koperasi SI-KKPRIS (Lengkap Tahap 1 s.d. Tahap 7).
 """
 
 from django.urls import path
 from koperasi.controllers import (
     anggota_controller,
     auth_controller,
+    laporan_bukti_controller,
     pembiayaan_controller,
     rekap_notifikasi_controller,
     simpanan_controller,
@@ -145,11 +146,25 @@ urlpatterns = [
         name='notifikasi_tagihan',
     ),
 
-    # Rute Menu Sidebar untuk Tahap 7 (Akan diaktifkan penuh pada Tahap 7)
+    # Kuitansi Digital PDF, Laporan Keuangan (Triwulanan & RAT) & Audit Trail Log (Tahap 7 — UC-13, UC-15)
     path(
         'laporan-keuangan/',
-        auth_controller.modul_terjadwal_view,
-        {'nama_modul': 'Laporan Keuangan & RAT', 'tahap': 7},
+        laporan_bukti_controller.laporan_keuangan_view,
         name='laporan_keuangan',
+    ),
+    path(
+        'laporan-keuangan/ekspor/',
+        laporan_bukti_controller.ekspor_laporan_keuangan_view,
+        name='ekspor_laporan_keuangan',
+    ),
+    path(
+        'kuitansi/<str:no_kuitansi>/pdf/',
+        laporan_bukti_controller.unduh_kuitansi_pdf_view,
+        name='unduh_kuitansi_pdf',
+    ),
+    path(
+        'audit-trail/',
+        laporan_bukti_controller.audit_trail_log_view,
+        name='audit_trail_log',
     ),
 ]

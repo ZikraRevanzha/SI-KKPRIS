@@ -874,6 +874,57 @@ class SIKKPRISModelsTestCase(TestCase):
             ).exists()
         )
 
+    def test_10_laporan_keuangan_rat_kuitansi_pdf_dan_audit_trail_tahap_7(self):
+        """Menguji fitur Tahap 7: Laporan Keuangan Triwulanan & RAT (SHU & Neraca), Kuitansi PDF, & Audit Trail Log."""
+        # 1. Jalankan seed_master --with-demo agar data simpanan, pembiayaan, realisasi & angsuran lengkap
+        call_command('seed_master', '--with-demo', verbosity=0)
+
+        # 2. Login sebagai Ketua & buka halaman Laporan Keuangan (WD-14)
+        self.client.post('/login/', {'username': 'ketua', 'password': 'Kkpris2026!'})
+
+        for tab in ('SIMPANAN', 'PEMBIAYAAN', 'KAS_MASUK_KELUAR'):
+            resp_lap = self.client.get(f'/laporan-keuangan/?tab={tab}&periode=TAHUNAN&tahun=2026')
+            self.assertEqual(resp_lap.status_code, 200)
+            self.assertTemplateUsed(resp_lap, 'laporan/laporan_keuangan.html')
+            self.assertContains(resp_lap, 'Laporan Keuangan')
+            self.assertContains(resp_lap, 'Total Debit')
+            self.assertContains(resp_lap, 'Total Kredit')
+            self.assertContains(resp_lap, 'Saldo')
+            self.assertContains(resp_lap, 'Sisa Hasil Usaha (SHU) Bersih')
+
+        # 3. Uji Filter Triwulanan (TW3 — Juli s.d. September 2026)
+        resp_tw3 = self.client.get('/laporan-keuangan/?tab=KAS_MASUK_KELUAR&periode=TW3&tahun=2026')
+        self.assertEqual(resp_tw3.status_code, 200)
+        self.assertContains(resp_tw3, 'Triwulan III (Juli – September 2026)')
+
+        # 4. Uji Ekspor Laporan Keuangan ke PDF (.pdf) & Microsoft Excel (.xlsx)
+        resp_pdf = self.client.get('/laporan-keuangan/ekspor/?tab=KAS_MASUK_KELUAR&periode=TAHUNAN&tahun=2026&format=pdf')
+        self.assertEqual(resp_pdf.status_code, 200)
+        self.assertEqual(resp_pdf['Content-Type'], 'application/pdf')
+
+        resp_xlsx = self.client.get('/laporan-keuangan/ekspor/?tab=KAS_MASUK_KELUAR&periode=TAHUNAN&tahun=2026&format=xlsx')
+        self.assertEqual(resp_xlsx.status_code, 200)
+        self.assertEqual(
+            resp_xlsx['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
+        # 5. Uji Unduh Kuitansi Digital PDF (Simpanan & Angsuran)
+        resp_kui_smp_pdf = self.client.get('/kuitansi/KUI-DEMO-001/pdf/')
+        self.assertEqual(resp_kui_smp_pdf.status_code, 200)
+        self.assertEqual(resp_kui_smp_pdf['Content-Type'], 'application/pdf')
+
+        resp_kui_ang_pdf = self.client.get('/kuitansi/KUI-ANG-2026-001/pdf/')
+        self.assertEqual(resp_kui_ang_pdf.status_code, 200)
+        self.assertEqual(resp_kui_ang_pdf['Content-Type'], 'application/pdf')
+
+        # 6. Uji Halaman Audit Trail Log Sistem (Append-Only)
+        resp_audit = self.client.get('/audit-trail/?q=EKSPOR_LAPORAN_KEUANGAN')
+        self.assertEqual(resp_audit.status_code, 200)
+        self.assertTemplateUsed(resp_audit, 'laporan/audit_trail_log.html')
+        self.assertContains(resp_audit, 'EKSPOR_LAPORAN_KEUANGAN')
+
+
 
 
 

@@ -130,7 +130,10 @@
         </div>
     </div>
 
-    <div class="no-print" style="margin-top: 24px; text-align: right;">
+    <div class="no-print" style="margin-top: 24px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
+        <a href="{% url 'unduh_kuitansi_pdf' pembayaran.no_kuitansi %}" style="padding: 8px 18px; background: #ffffff; color: #111827; border: 1.5px solid #cbd5e1; text-decoration: none; font-weight: 600;">
+            ⬇ Unduh PDF
+        </a>
         <button onclick="window.print()" style="padding: 8px 18px; background: #111827; color: #fff; border: none; cursor: pointer; font-weight: 600;">
             🖨 Cetak Sekarang
         </button>
