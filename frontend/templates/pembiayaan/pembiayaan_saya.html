@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% load kkpris_tags %}
+
+{% block title %}Pembiayaan Saya — SI-KKPRIS{% endblock %}
+
+{% block content %}
+<div class="page-header-row">
+    <div>
+        <h1 class="page-title">Pembiayaan Saya</h1>
+        <p class="page-subtitle">
+            Riwayat pengajuan pembiayaan syariah, status nomor antrean, dan progress pelunasan angsuran milik {{ anggota.nama }} ({{ anggota.no_anggota }})
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'ajukan_pembiayaan' %}" class="btn btn-primary-dark">+ Ajukan Pembiayaan</a>
+    </div>
+</div>
+
+<!-- 3 KARTU RINGKASAN PEMBIAYAAN PRIBADI -->
+<div class="stats-grid-3">
+    <div class="stat-card">
+        <div class="stat-icon-box">▤</div>
+        <div class="stat-body">
+            <div class="stat-label">Total Plafon Pembiayaan</div>
+            <div class="stat-value">{{ total_pokok_anggota|rupiah }}</div>
+            <div class="stat-meta">{{ daftar_baris|length }} riwayat kontrak pengajuan</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon-box">✓</div>
+        <div class="stat-body">
+            <div class="stat-label">Angsuran Telah Terbayar</div>
+            <div class="stat-value">{{ total_terbayar_anggota|rupiah }}</div>
+            <div class="stat-meta">Potong gaji tanggal 24 &amp; cicilan mandiri</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon-box">⏳</div>
+        <div class="stat-body">
+            <div class="stat-label">Sisa Kewajiban Aktif</div>
+            <div class="stat-value">{{ sisa_kewajiban_anggota|rupiah }}</div>
+            <div class="stat-meta">Akumulasi sisa pokok + margin berjalan</div>
+        </div>
+    </div>
+</div>
+
+<div class="dashed-info-banner">
+    <div class="stat-icon-box" style="width: 34px; height: 34px;">📅</div>
+    <div style="flex: 1;">
+        <div style="font-weight: 600; font-size: 13.5px;">Pengajuan dibuka tanggal 1-20 setiap bulan</div>
+        <div style="font-size: 12px; color: var(--text-muted);">
+            Pilih skema akad <strong>Murabahah</strong>, <strong>Ijarah</strong>, atau <strong>Hawalah</strong> dengan tenor hingga 72 bulan (margin flat).
+        </div>
+    </div>
+</div>
+
+<div class="panel-card" style="margin-bottom: 0;">
+    <div class="panel-header">
+        <span class="panel-title">Daftar Kontrak &amp; Pengajuan Pembiayaan Saya</span>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>No. Kontrak &amp; Antrean</th>
+                    <th>Tanggal</th>
+                    <th>Akad &amp; Keperluan</th>
+                    <th>Jumlah Pokok</th>
+                    <th>Margin/Ujrah</th>
+                    <th>Tenor &amp; Progress</th>
+                    <th>Angsuran/Bulan</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in daftar_baris %}
+                    {% with pmb=item.obj %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 700;">{{ pmb.no_pembiayaan }}</div>
+                            <div style="font-size: 11.5px; color: var(--text-muted);">Antrean #{{ pmb.no_antrean }}</div>
+                        </td>
+                        <td>{{ pmb.tanggal_pengajuan|date:"d/m/Y" }}</td>
+                        <td>
+                            <div style="font-weight: 600;">{{ pmb.jenis_akad.get_nama_display }}</div>
+                            <div style="font-size: 11.5px; color: var(--text-muted);">{{ pmb.tujuan_pembiayaan }}</div>
+                        </td>
+                        <td style="font-weight: 700;">{{ pmb.harga_pokok|rupiah }}</td>
+                        <td>{{ pmb.total_margin|rupiah }}</td>
+                        <td style="min-width: 130px;">
+                            <div class="progress-track" style="height: 8px; margin-bottom: 4px;">
+                                <div class="progress-fill brand" style="width: {{ item.persen_progress }}%;"></div>
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-muted);">
+                                {{ item.lunas_count }}/{{ item.total_tenor }} bln ({{ item.persen_progress }}%)
+                            </div>
+                        </td>
+                        <td style="font-weight: 700; color: var(--brand-dark);">{{ pmb.angsuran_bulanan|rupiah }}</td>
+                        <td>
+                            {% if pmb.status == 'AKTIF' or pmb.status == 'LUNAS' %}
+                                <span class="status-badge success">{{ pmb.get_status_display }}</span>
+                            {% elif pmb.status == 'DISETUJUI_KETUA' %}
+                                <span class="status-badge info" style="background:#e0f2fe;color:#0369a1;border-color:#7dd3fc;">Disetujui Ketua</span>
+                            {% elif pmb.status == 'DITOLAK' %}
+                                <span class="status-badge danger">Ditolak</span>
+                            {% else %}
+                                <span class="status-badge warning">{{ pmb.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <a href="{% url 'detail_pembiayaan' pmb.id %}" class="btn btn-outline btn-sm">
+                                Detail &amp; Jadwal
+                            </a>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                {% empty %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 28px;">
+                            Anda belum memiliki pengajuan pembiayaan syariah. Klik tombol <strong>+ Ajukan Pembiayaan</strong> di kanan atas untuk memulai.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

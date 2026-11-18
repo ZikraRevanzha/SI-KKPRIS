@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load kkpris_tags %}
+
+{% block title %}Simpanan Saya — SI-KKPRIS{% endblock %}
+
+{% block content %}
+<!-- HEADER HALAMAN PORTAL MANDIRI SIMPANAN ANGGOTA (UC-02, FR-SMP-01) -->
+<div class="page-header-row">
+    <div>
+        <h1 class="page-title">Simpanan Saya</h1>
+        <p class="page-subtitle">
+            Rincian saldo berjalan 5 skema simpanan (Pokok, Wajib, Khusus, Hari Raya, Berencana) &amp; riwayat mutasi {{ anggota.nama }} ({{ anggota.no_anggota }})
+        </p>
+    </div>
+
+    <div class="page-actions">
+        <span class="status-badge success" style="padding: 8px 14px; font-size: 13px;">
+            Total Simpanan: {{ total_keseluruhan|rupiah }}
+        </span>
+    </div>
+</div>
+
+<!-- BARIS 5 KARTU SALDO SKEMA SIMPANAN (Sesuai Beranda Anggota.png & FR-SMP-01) -->
+<div class="stats-grid-5">
+    {% for item in rincian_saldo %}
+        <div class="stat-card">
+            <div class="stat-icon-box">{{ item.kode }}</div>
+            <div class="stat-body">
+                <div class="stat-label">{{ item.nama_singkat }}</div>
+                <div class="stat-value">{{ item.saldo|rupiah }}</div>
+                <div class="stat-meta">
+                    {% if item.dapat_ditarik %}
+                        Sukarela (Dapat Ditarik)
+                    {% else %}
+                        🔒 Terkunci
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- KOTAK RINGKASAN TERKUNCI VS SUKARELA (BR-08) -->
+<div class="info-banner-box">
+    <div class="stat-icon-box" style="width: 34px; height: 34px;">ℹ</div>
+    <div style="flex: 1;">
+        <div style="font-weight: 600; color: var(--text-primary); font-size: 13.5px;">
+            Simpanan Terkunci: <strong>{{ total_terkunci|rupiah }}</strong> •
+            Simpanan Sukarela (Dapat Ditarik): <strong style="color: var(--brand-dark);">{{ total_sukarela|rupiah }}</strong>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+            Sesuai aturan bisnis koperasi (BR-08), Simpanan Pokok, Wajib, dan Khusus bersifat mengikat/terkunci selama berstatus anggota aktif. Penarikan hanya dapat dilakukan pada Simpanan Hari Raya dan Simpanan Berencana melalui Bendahara.
+        </div>
+    </div>
+</div>
+
+<!-- FILTER RIWAYAT SIMPANAN SAYA -->
+<form method="get" action="{% url 'kelola_simpanan' %}" class="filter-toolbar" id="formFilterSimpananAnggota" style="grid-template-columns: 1fr 1fr;">
+    <div>
+        <select name="jenis_simpanan" class="form-control" onchange="document.getElementById('formFilterSimpananAnggota').submit()">
+            <option value="">Semua Jenis Simpanan (5 Skema)</option>
+            {% for js in daftar_jenis_simpanan %}
+                <option value="{{ js.kode }}" {% if filter_jenis == js.kode %}selected{% endif %}>
+                    {{ js.nama }} ({{ js.kode }})
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div>
+        <select name="jenis_transaksi" class="form-control" onchange="document.getElementById('formFilterSimpananAnggota').submit()">
+            <option value="">Semua Jenis Transaksi (Setor &amp; Tarik)</option>
+            {% for val, label in jenis_transaksi_choices %}
+                <option value="{{ val }}" {% if filter_transaksi == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+
+<!-- TABEL RIWAYAT MUTASI SIMPANAN SAYA -->
+<div class="panel-card" style="margin-bottom: 0;">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tanggal</th>
+                <th>No. Kuitansi</th>
+                <th>Jenis Simpanan</th>
+                <th>Transaksi</th>
+                <th>Jumlah</th>
+                <th>Saldo Sebelum</th>
+                <th>Saldo Sesudah</th>
+                <th style="text-align: right;">Bukti</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in daftar_baris_mutasi %}
+                {% with ts=item.obj %}
+                <tr>
+                    <td>{{ ts.tanggal_transaksi|date:"d/m/Y H:i" }}</td>
+                    <td style="font-weight: 600;">{{ ts.no_kuitansi }}</td>
+                    <td>
+                        <div style="font-weight: 600;">{{ ts.jenis_simpanan.nama }}</div>
+                        <div style="font-size: 11.5px; color: var(--text-muted);">{{ ts.keterangan|default:"-" }}</div>
+                    </td>
+                    <td>
+                        {% if ts.jenis_transaksi == 'SETOR' %}
+                            <span class="status-badge success">Setor</span>
+                        {% else %}
+                            <span class="status-badge warning">Tarik</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 700;">{{ ts.nominal|rupiah }}</td>
+                    <td style="color: var(--text-secondary);">{{ item.saldo_sebelum|rupiah }}</td>
+                    <td style="font-weight: 700; color: var(--brand-dark);">{{ ts.saldo_sesudah|rupiah }}</td>
+                    <td style="text-align: right;">
+                        <a
+                            href="{% url 'cetak_kuitansi_simpanan' ts.no_kuitansi %}"
+                            target="_blank"
+                            class="action-square-btn"
+                            title="Cetak Kuitansi Bukti Transaksi"
+                        >🖨</a>
+                    </td>
+                </tr>
+                {% endwith %}
+            {% empty %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 28px;">
+                        Belum ada riwayat mutasi simpanan pada kategori ini.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="table-pagination-bar">
+        <div class="pagination-info">
+            Halaman {{ page_obj.number }} dari {{ page_obj.paginator.num_pages }}
+            (Total {{ page_obj.paginator.count }} mutasi)
+        </div>
+        <div class="pagination-btn-group">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&jenis_simpanan={{ filter_jenis }}&jenis_transaksi={{ filter_transaksi }}" class="btn btn-outline btn-sm">
+                    Sebelumnya
+                </a>
+            {% else %}
+                <button type="button" class="btn btn-outline btn-sm" disabled style="opacity: 0.5;">Sebelumnya</button>
+            {% endif %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&jenis_simpanan={{ filter_jenis }}&jenis_transaksi={{ filter_transaksi }}" class="btn btn-outline btn-sm">
+                    Berikutnya
+                </a>
+            {% else %}
+                <button type="button" class="btn btn-outline btn-sm" disabled style="opacity: 0.5;">Berikutnya</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

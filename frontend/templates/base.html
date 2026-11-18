@@ -1,0 +1,216 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SI-KKPRIS — Koperasi KKPRIS SMKN 1 Kota Solok{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+<div class="app-layout">
+    <!-- SIDEBAR NAVIGASI (Sesuai Peran: BENDAHARA, KETUA, ANGGOTA) -->
+    <aside class="sidebar">
+        <div>
+            <div class="sidebar-brand">
+                <div class="sidebar-logo">KK</div>
+                <div class="sidebar-brand-text">
+                    <span class="sidebar-brand-title">SI-KKPRIS</span>
+                    <span class="sidebar-brand-sub">SMKN 1 Kota Solok</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                {% if request.pengguna.peran == 'BENDAHARA' %}
+                    <a href="{% url 'dashboard_pengurus' %}" class="nav-item {% if active_menu == 'dashboard' %}active{% endif %}">
+                        <span class="nav-icon-box">⊞</span>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="{% url 'data_anggota' %}" class="nav-item {% if active_menu == 'data_anggota' %}active{% endif %}">
+                        <span class="nav-icon-box">👥</span>
+                        <span>Data Anggota</span>
+                    </a>
+                    <a href="{% url 'kelola_simpanan' %}" class="nav-item {% if active_menu == 'simpanan' %}active{% endif %}">
+                        <span class="nav-icon-box">◈</span>
+                        <span>Simpanan</span>
+                    </a>
+                    <a href="{% url 'kelola_pembiayaan' %}" class="nav-item {% if active_menu == 'pembiayaan_syariah' %}active{% endif %}">
+                        <span class="nav-icon-box">▤</span>
+                        <span>Pembiayaan</span>
+                    </a>
+                    <a href="{% url 'kelola_angsuran' %}" class="nav-item {% if active_menu == 'kelola_angsuran' %}active{% endif %}">
+                        <span class="nav-icon-box">✓</span>
+                        <span>Angsuran</span>
+                    </a>
+                    <a href="{% url 'rekap_potong_gaji' %}" class="nav-item {% if 'rekap' in active_menu %}active{% endif %}">
+                        <span class="nav-icon-box">📅</span>
+                        <span>Rekap Potong Gaji</span>
+                    </a>
+                    <a href="{% url 'notifikasi_tagihan' %}" class="nav-item {% if 'notifikasi' in active_menu %}active{% endif %}">
+                        <span class="nav-icon-box">✉</span>
+                        <span>Notifikasi Tagihan</span>
+                    </a>
+                    <a href="{% url 'laporan_keuangan' %}" class="nav-item {% if 'laporan' in active_menu %}active{% endif %}">
+                        <span class="nav-icon-box">📊</span>
+                        <span>Laporan Keuangan</span>
+                    </a>
+
+                {% elif request.pengguna.peran == 'KETUA' %}
+                    <a href="{% url 'dashboard_pengurus' %}" class="nav-item {% if active_menu == 'dashboard' %}active{% endif %}">
+                        <span class="nav-icon-box">⊞</span>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="{% url 'persetujuan_kas' %}" class="nav-item {% if 'persetujuan' in active_menu %}active{% endif %}">
+                        <span class="nav-icon-box">✓</span>
+                        <span>Persetujuan Kas</span>
+                    </a>
+                    <a href="{% url 'data_anggota' %}" class="nav-item {% if active_menu == 'data_anggota' %}active{% endif %}">
+                        <span class="nav-icon-box">👥</span>
+                        <span>Data Anggota</span>
+                    </a>
+                    <a href="{% url 'kelola_simpanan' %}" class="nav-item {% if active_menu == 'simpanan' %}active{% endif %}">
+                        <span class="nav-icon-box">◈</span>
+                        <span>Simpanan</span>
+                    </a>
+                    <a href="{% url 'kelola_pembiayaan' %}" class="nav-item {% if active_menu == 'pembiayaan_syariah' %}active{% endif %}">
+                        <span class="nav-icon-box">▤</span>
+                        <span>Pembiayaan</span>
+                    </a>
+                    <a href="{% url 'rekap_potong_gaji' %}" class="nav-item {% if 'rekap' in active_menu %}active{% endif %}">
+                        <span class="nav-icon-box">📅</span>
+                        <span>Rekap Potong Gaji</span>
+                    </a>
+                    <a href="{% url 'laporan_keuangan' %}" class="nav-item {% if 'laporan' in active_menu %}active{% endif %}">
+                        <span class="nav-icon-box">📊</span>
+                        <span>Laporan Keuangan</span>
+                    </a>
+
+                {% else %}
+                    <!-- Menu Peran ANGGOTA (Sesuai Beranda Anggota.png) -->
+                    <a href="{% url 'beranda_anggota' %}" class="nav-item {% if active_menu == 'beranda' %}active{% endif %}">
+                        <span class="nav-icon-box">⊞</span>
+                        <span>Beranda</span>
+                    </a>
+                    <a href="{% url 'kelola_simpanan' %}" class="nav-item {% if active_menu == 'simpanan' %}active{% endif %}">
+                        <span class="nav-icon-box">◈</span>
+                        <span>Simpanan Saya</span>
+                    </a>
+                    <a href="{% url 'kelola_pembiayaan' %}" class="nav-item {% if active_menu == 'pembiayaan_syariah' %}active{% endif %}">
+                        <span class="nav-icon-box">▤</span>
+                        <span>Pembiayaan Saya</span>
+                    </a>
+                    <a href="{% url 'ajukan_pembiayaan' %}" class="nav-item {% if active_menu == 'ajukan_pembiayaan' %}active{% endif %}">
+                        <span class="nav-icon-box">＋</span>
+                        <span>Ajukan Pembiayaan</span>
+                    </a>
+                    <a href="{% url 'pengunduran_diri' %}" class="nav-item {% if 'pengunduran' in active_menu %}active{% endif %}">
+                        <span class="nav-icon-box">⎋</span>
+                        <span>Ajukan Pengunduran Diri</span>
+                    </a>
+                {% endif %}
+            </nav>
+        </div>
+
+        <div class="sidebar-footer">
+            <a href="javascript:void(0)" onclick="bukaModalPassword()" class="nav-item">
+                <span class="nav-icon-box">🔑</span>
+                <span>Ganti Password</span>
+            </a>
+            <a href="{% url 'logout' %}" class="nav-item">
+                <span class="nav-icon-box">←</span>
+                <span>Keluar</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- AREA UTAMA (TOPBAR + CONTENT) -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-left">
+                <button type="button" class="icon-square-btn" onclick="document.body.classList.toggle('sidebar-collapsed')" title="Sembunyikan/Tampilkan Sidebar">
+                    ☰
+                </button>
+                <span class="topbar-date">{% now "l, d F Y" %}</span>
+            </div>
+
+            <div class="topbar-right">
+                <button type="button" class="icon-square-btn" onclick="bukaModalPassword()" title="Ganti Password Akun">
+                    ⚙
+                </button>
+                <div class="user-profile-pill">
+                    <div class="user-avatar-circle">
+                        {{ request.pengguna.nama_lengkap|slice:":1"|upper }}
+                    </div>
+                    <div class="user-info-stack">
+                        <span class="user-name-label">{{ request.pengguna.nama_lengkap }}</span>
+                        <span class="user-role-label">
+                            {{ request.pengguna.get_peran_display }}
+                            {% if request.pengguna.profil_anggota %}
+                                • {{ request.pengguna.profil_anggota.no_anggota }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="page-content">
+            {% if messages %}
+                <div class="alert-stack">
+                    {% for msg in messages %}
+                        <div class="alert-box {{ msg.tags }}">
+                            <span>{{ msg }}</span>
+                            <button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;font-weight:700;">✕</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+<!-- MODAL GANTI PASSWORD (FR-AUTH-03) -->
+<div class="modal-backdrop" id="modalGantiPassword">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <span class="panel-title">Ganti Password Akun</span>
+            <button type="button" class="icon-square-btn" onclick="tutupModalPassword()">✕</button>
+        </div>
+        <form method="post" action="{% url 'ganti_password' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Password Saat Ini</label>
+                    <input type="password" name="password_lama" class="form-control" required placeholder="Masukkan password lama">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password Baru (Min. 8 Karakter)</label>
+                    <input type="password" name="password_baru" class="form-control" minlength="8" required placeholder="Masukkan password baru">
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Konfirmasi Password Baru</label>
+                    <input type="password" name="konfirmasi_password" class="form-control" minlength="8" required placeholder="Ulangi password baru">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="tutupModalPassword()">Batal</button>
+                <button type="submit" class="btn btn-primary-dark">Simpan Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function bukaModalPassword() {
+        document.getElementById('modalGantiPassword').classList.add('open');
+    }
+    function tutupModalPassword() {
+        document.getElementById('modalGantiPassword').classList.remove('open');
+    }
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
+

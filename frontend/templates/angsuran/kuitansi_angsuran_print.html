@@ -1,0 +1,143 @@
+{% load kkpris_tags %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Kuitansi Pembayaran Angsuran {{ pembayaran.no_kuitansi }} — SI-KKPRIS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f1f5f9;
+            color: #0f172a;
+            padding: 32px;
+        }
+        .receipt-box {
+            max-width: 720px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 2px solid #0f766e;
+            padding: 28px 32px;
+        }
+        .receipt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #0f766e;
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+        }
+        .receipt-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f766e;
+        }
+        .receipt-sub {
+            font-size: 12px;
+            color: #475569;
+        }
+        .kv-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .kv-table td {
+            padding: 8px 6px;
+            border-bottom: 1px dashed #cbd5e1;
+            font-size: 13.5px;
+        }
+        .amount-banner {
+            background: #f0fdfa;
+            border: 1.5px solid #0f766e;
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: #115e59;
+            margin-bottom: 24px;
+        }
+        .sign-grid {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 28px;
+            font-size: 13px;
+            text-align: center;
+        }
+        @media print {
+            body { background: #ffffff; padding: 0; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="receipt-box">
+    <div class="receipt-header">
+        <div>
+            <div class="receipt-title">KOPERASI SYARIAH KKPRIS SMKN 1 KOTA SOLOK</div>
+            <div class="receipt-sub">BUKTI PEMBAYARAN ANGSURAN PEMBIAYAAN SYARIAH RESMI</div>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-weight: 700; font-size: 14px;">{{ pembayaran.no_kuitansi }}</div>
+            <div class="receipt-sub">{{ pembayaran.tanggal_bayar|date:"d F Y H:i" }} WIB</div>
+        </div>
+    </div>
+
+    <table class="kv-table">
+        <tr>
+            <td style="width: 38%; color: #475569;">Nama Anggota / No. Anggota</td>
+            <td><strong>{{ pembayaran.jadwal_angsuran.pembiayaan.anggota.nama }} ({{ pembayaran.jadwal_angsuran.pembiayaan.anggota.no_anggota }})</strong></td>
+        </tr>
+        <tr>
+            <td style="color: #475569;">Nomor Kontrak &amp; Skema Akad</td>
+            <td><strong>{{ pembayaran.jadwal_angsuran.pembiayaan.no_pembiayaan }} — {{ pembayaran.jadwal_angsuran.pembiayaan.jenis_akad.get_nama_display }}</strong></td>
+        </tr>
+        <tr>
+            <td style="color: #475569;">Angsuran Ke / Tenor</td>
+            <td><strong>Bulan ke-{{ pembayaran.jadwal_angsuran.angsuran_ke }} dari {{ pembayaran.jadwal_angsuran.pembiayaan.tenor_bulan }} Bulan</strong></td>
+        </tr>
+        <tr>
+            <td style="color: #475569;">Rincian Pokok &amp; Margin</td>
+            <td>Pokok: {{ pembayaran.jadwal_angsuran.porsi_pokok|rupiah }} • Margin/Ujrah: {{ pembayaran.jadwal_angsuran.porsi_margin|rupiah }}</td>
+        </tr>
+        <tr>
+            <td style="color: #475569;">Metode Pembayaran</td>
+            <td>{{ pembayaran.get_metode_bayar_display }} {% if pembayaran.nomor_referensi %}({{ pembayaran.nomor_referensi }}){% endif %}</td>
+        </tr>
+        {% if pembayaran.potongan_margin > 0 %}
+        <tr>
+            <td style="color: #475569;">Potongan Margin (Muqashah)</td>
+            <td>{{ pembayaran.potongan_margin|rupiah }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <div class="amount-banner">
+        <span>JUMLAH PEMBAYARAN DITERIMA</span>
+        <span>{{ pembayaran.nominal_bayar|rupiah:True }}</span>
+    </div>
+
+    <div class="sign-grid">
+        <div>
+            <div>Penyetor / Anggota,</div>
+            <div style="height: 56px;"></div>
+            <div><strong>({{ pembayaran.jadwal_angsuran.pembiayaan.anggota.nama }})</strong></div>
+        </div>
+        <div>
+            <div>Kota Solok, {{ pembayaran.tanggal_bayar|date:"d F Y" }}<br>Bendahara Koperasi KKPRIS,</div>
+            <div style="height: 42px;"></div>
+            <div><strong>({{ pembayaran.bendahara.nama_lengkap }})</strong></div>
+        </div>
+    </div>
+
+    <div class="no-print" style="margin-top: 24px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
+        <a href="{% url 'unduh_kuitansi_pdf' pembayaran.no_kuitansi %}" style="padding: 8px 18px; background: #ffffff; color: #111827; border: 1.5px solid #cbd5e1; text-decoration: none; font-weight: 600;">
+            ⬇ Unduh PDF
+        </a>
+        <button onclick="window.print()" style="padding: 8px 18px; background: #111827; color: #fff; border: none; cursor: pointer; font-weight: 600;">
+            🖨 Cetak Sekarang
+        </button>
+    </div>
+</div>
+</body>
+</html>

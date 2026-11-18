@@ -1,0 +1,107 @@
+{% load kkpris_tags %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Laporan Keuangan &amp; RAT — SI-KKPRIS</title>
+    <style>
+        @page { size: A4 landscape; margin: 1.4cm; }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 9.5pt;
+            color: #0f172a;
+        }
+        .title {
+            font-size: 13pt;
+            font-weight: bold;
+            text-align: center;
+        }
+        .subtitle {
+            font-size: 9.5pt;
+            text-align: center;
+            color: #334155;
+            margin-bottom: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+        }
+        th {
+            background-color: #0f766e;
+            color: #ffffff;
+            padding: 6px;
+            border: 1px solid #0f766e;
+            text-align: left;
+        }
+        td {
+            padding: 5px 6px;
+            border: 1px solid #cbd5e1;
+        }
+        .total-row td {
+            background-color: #e2e8f0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">LAPORAN KEUANGAN &amp; PERTANGGUNGJAWABAN RAT — KOPERASI SYARIAH KKPRIS SMKN 1 KOTA SOLOK</div>
+    <div class="subtitle">
+        Kategori: {{ kompilasi.tab_aktif }} | Periode: {{ label_periode }} | Tanggal Cetak: {{ tanggal_cetak|date:"d/m/Y" }}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Total Debit (Kas Masuk)</th>
+                <th>Total Kredit (Kas Keluar)</th>
+                <th>Saldo Bersih Periode</th>
+                <th>Modal Simpanan Anggota</th>
+                <th>Piutang Pembiayaan</th>
+                <th>SHU Bersih Tahun {{ neraca_shu.tahun_buku }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>{{ kompilasi.total_debit|rupiah }}</strong></td>
+                <td><strong>{{ kompilasi.total_kredit|rupiah }}</strong></td>
+                <td><strong>{{ kompilasi.saldo_akhir|rupiah }}</strong></td>
+                <td>{{ neraca_shu.total_modal_simpanan|rupiah }}</td>
+                <td>{{ neraca_shu.total_piutang_pembiayaan|rupiah }}</td>
+                <td><strong>{{ neraca_shu.shu_bersih|rupiah }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 35px;">No</th>
+                <th style="width: 85px;">Tanggal</th>
+                <th>Keterangan Transaksi</th>
+                <th style="width: 135px;">Debit</th>
+                <th style="width: 135px;">Kredit</th>
+                <th style="width: 140px;">Saldo</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in kompilasi.baris_jurnal_kronologis %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ row.tanggal|date:"d/m/Y" }}</td>
+                <td>{{ row.keterangan }}</td>
+                <td>{% if row.debit > 0 %}{{ row.debit|rupiah }}{% else %}-{% endif %}</td>
+                <td>{% if row.kredit > 0 %}{{ row.kredit|rupiah }}{% else %}-{% endif %}</td>
+                <td><strong>{{ row.saldo|rupiah }}</strong></td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="3">TOTAL AKUMULASI PERIODE</td>
+                <td>{{ kompilasi.total_debit|rupiah }}</td>
+                <td>{{ kompilasi.total_kredit|rupiah }}</td>
+                <td>{{ kompilasi.saldo_akhir|rupiah }}</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

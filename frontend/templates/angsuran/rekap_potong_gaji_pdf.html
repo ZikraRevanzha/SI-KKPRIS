@@ -1,0 +1,94 @@
+{% load kkpris_tags %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Rekap Potong Gaji {{ rekap.kode_rekap }} — SI-KKPRIS</title>
+    <style>
+        @page { size: A4 landscape; margin: 1.5cm; }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            color: #0f172a;
+        }
+        .header-title {
+            font-size: 13pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+        .header-sub {
+            font-size: 9.5pt;
+            text-align: center;
+            color: #334155;
+            margin-bottom: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+        th {
+            background-color: #0f766e;
+            color: #ffffff;
+            padding: 6px 8px;
+            font-size: 9.5pt;
+            border: 1px solid #0f766e;
+            text-align: left;
+        }
+        td {
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 9.5pt;
+        }
+        tr.total-row td {
+            background-color: #e2e8f0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-title">REKAPITULASI POTONGAN GAJI ANGGOTA (CUT-OFF TANGGAL 24)</div>
+    <div class="header-sub">
+        KOPERASI SYARIAH KKPRIS SMK NEGERI 1 KOTA SOLOK<br>
+        Kode Rekap: {{ rekap.kode_rekap }} | Periode: {{ label_periode }} | Tanggal Cut-off: {{ rekap.tanggal_cut_off|date:"d/m/Y" }} | Status: {{ rekap.get_status_rekap_display }}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 35px;">No</th>
+                <th style="width: 110px;">No. Anggota</th>
+                <th>Nama Anggota</th>
+                <th style="width: 130px;">Simpanan Wajib</th>
+                <th style="width: 140px;">Angsuran</th>
+                <th style="width: 130px;">Belanja Toko</th>
+                <th style="width: 145px;">Total Potongan</th>
+                <th style="width: 110px;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in rincian %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ d.anggota.no_anggota }}</td>
+                <td>{{ d.anggota.nama }}</td>
+                <td>{{ d.nominal_simpanan_wajib|rupiah }}</td>
+                <td>{{ d.nominal_angsuran|rupiah }}</td>
+                <td>{{ d.nominal_simpanan_sukarela|rupiah }}</td>
+                <td><strong>{{ d.subtotal_potongan|rupiah }}</strong></td>
+                <td>{{ d.get_status_potongan_display }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="3">Total</td>
+                <td>{{ rekap.total_simpanan_wajib|rupiah }}</td>
+                <td>{{ rekap.total_angsuran|rupiah }}</td>
+                <td>{{ total_toko|rupiah }}</td>
+                <td>{{ rekap.total_tagihan|rupiah }}</td>
+                <td>{{ rekap.get_status_rekap_display }}</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

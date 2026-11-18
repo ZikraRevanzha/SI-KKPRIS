@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Jejak Audit Sistem (Audit Trail Log) — SI-KKPRIS{% endblock %}
+
+{% block content %}
+<div class="page-header-row">
+    <div>
+        <h1 class="page-title">Jejak Audit Keamanan Sistem (Audit Trail Log)</h1>
+        <p class="page-subtitle">
+            Rekaman aktivitas sensitif bersifat <em>Append-Only</em> (Tidak dapat diubah atau dihapus — NFR-SEC-03) • Total {{ total_logs }} log tercatat
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'laporan_keuangan' %}" class="btn btn-outline">← Kembali ke Laporan Keuangan</a>
+    </div>
+</div>
+
+<form method="get" action="{% url 'audit_trail_log' %}" class="filter-toolbar" style="grid-template-columns: 1fr 220px 140px;">
+    <div>
+        <input
+            type="text"
+            name="q"
+            value="{{ q }}"
+            class="form-control"
+            placeholder="Cari aksi, nama tabel, username, atau detail perubahan..."
+        >
+    </div>
+    <div>
+        <select name="peran" class="form-control">
+            <option value="">Semua Peran Pengguna</option>
+            {% for val, label in peran_choices %}
+                <option value="{{ val }}" {% if filter_peran == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary-dark">Saring Log</button>
+</form>
+
+<div class="panel-card" style="margin-bottom: 0;">
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Waktu (WIB)</th>
+                    <th>Pengguna &amp; Peran</th>
+                    <th>Aksi</th>
+                    <th>Tabel &amp; Record</th>
+                    <th>Detail Perubahan</th>
+                    <th>Alamat IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj.object_list %}
+                    <tr>
+                        <td style="white-space: nowrap; font-weight: 600;">{{ log.created_at|date:"d/m/Y H:i:s" }}</td>
+                        <td>
+                            <div class="member-info-primary">{{ log.pengguna.nama_lengkap }}</div>
+                            <div class="member-info-secondary">{{ log.pengguna.username }} ({{ log.pengguna.peran }})</div>
+                        </td>
+                        <td><span class="status-badge">{{ log.aksi }}</span></td>
+                        <td style="font-family: monospace; font-size: 12px;">{{ log.nama_tabel }} #{{ log.record_id }}</td>
+                        <td style="max-width: 440px;">{{ log.detail_perubahan }}</td>
+                        <td style="font-family: monospace; font-size: 12px;">{{ log.ip_address }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 28px;">
+                            Tidak ada jejak audit yang cocok dengan filter pencarian.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-pagination-bar">
+        <div class="pagination-info">
+            Menampilkan halaman {{ page_obj.number }} dari {{ page_obj.paginator.num_pages }}
+            (Total {{ page_obj.paginator.count }} log)
+        </div>
+        <div class="pagination-btn-group">
+            {% if page_obj.has_previous %}
+                <a href="?q={{ q }}&peran={{ filter_peran }}&page={{ page_obj.previous_page_number }}" class="btn btn-outline btn-sm">Sebelumnya</a>
+            {% else %}
+                <button type="button" class="btn btn-outline btn-sm" disabled style="opacity: 0.5;">Sebelumnya</button>
+            {% endif %}
+            {% if page_obj.has_next %}
+                <a href="?q={{ q }}&peran={{ filter_peran }}&page={{ page_obj.next_page_number }}" class="btn btn-outline btn-sm">Berikutnya</a>
+            {% else %}
+                <button type="button" class="btn btn-outline btn-sm" disabled style="opacity: 0.5;">Berikutnya</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,44 +1,14 @@
-# ============================================================================
-# .gitignore — SI-KKPRIS (Opsi B: Khusus Kode Implementasi, DDL & Log Kerja)
-# ============================================================================
-
-# 1. Abaikan Folder Dokumen Analisis, Riset, Wireframe & Berkas UTS
-/01_Manajemen Proyek/
-/02_Riset & Wawancara/
-/03_Analisis & Diagram/
-/04_Wireframe & Desain UI/
-/UTS/
-/README.md
-
-# 2. Abaikan Konfigurasi Editor / Agen Lokal
-.claude/
-.vscode/
-.idea/
-
-# 3. Python & Django Environment
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
 venv/
 .venv/
-env/
-ENV/
-db.sqlite3
-db.sqlite3-journal
-*.log
-local_settings.py
+__pycache__/
+*.pyc
 .env
 .env.*
 !.env.example
-
-# 4. Media Uploads (Berkas KTP, Agunan, Bukti Transfer Lokal)
-05_Implementasi/**/media/*
-!05_Implementasi/**/media/.gitkeep
-05_Implementasi/**/staticfiles/
-
-# 5. OS Generated Files
-.DS_Store
-Thumbs.db
-Desktop.ini
-~$*
+node_modules/
+dist/
+*.local
+backend/staticfiles/
+backend/media/*
+!backend/media/.gitkeep
+*.zip
