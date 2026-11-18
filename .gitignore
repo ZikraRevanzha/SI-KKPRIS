@@ -12,3 +12,6 @@ backend/staticfiles/
 backend/media/*
 !backend/media/.gitkeep
 *.zip
+
+.agents/
+skills-lock.json
