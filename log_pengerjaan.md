@@ -189,3 +189,28 @@ chore(init): tambah struktur awal dan aturan kerja
 ### 📌 Status & Rencana Selanjutnya
 * **Status Hari Ini:** Inisialisasi struktur implementasi, aturan kerja, dan koneksi GitHub selesai.
 * **Rencana Berikutnya:** Setup *Virtual Environment (`venv`)* Python, instalasi Django & pustaka pendukung (`requirements.txt`), konfigurasi koneksi database MySQL 8.4 Laragon, dan pembuatan struktur proyek Django beserta 16 Model sesuai ERD/DDL.
+
+---
+
+## 📅 18 November 2026
+
+### 🎯 Fokus / Modul yang Dikerjakan
+Persiapan Langkah 0 roadmap: restrukturisasi repository dan lingkungan kerja.
+
+### 🛠️ Rincian Perubahan
+* Pindahkan akar repository ke folder `SI-KKPRIS` (`.git` dipindah dari `Proyek/`); `05_Implementasi/*` kini `backend/`, `frontend/`, `database/` di akar.
+* Buat ulang virtualenv di `backend/.venv` (menggantikan `venv/` di akar).
+* Tambah `.gitignore` sesuai AGENTS.md Bagian 3 (+ `.venv/`).
+* Tambah `AGENTS.md` v2, `ROADMAP_PENGERJAAN.md`, `PENDING_KONFIRMASI.md`, `docs/wireframe/` (22 PNG), `docs/prompt_antigravity.md`, `docs/prompt_antigravity_v2.md`.
+* Tambah skill proyek di `.agents/` dan `skills-lock.json`.
+* Beri tag `mvt-final` pada commit `95fc734` (titik kembali versi MVT).
+
+### 💬 Pesan Commit Terkait
+`refactor(config): pindahkan akar repo ke SI-KKPRIS`, `docs(config): tambah aturan kerja v2 dan peta jalan`, `chore(config): tambah skill proyek`
+
+### 🔎 Temuan & PENDING Baru
+* Berkas lama `AGENTS.md`, `README.md`, `.gitignore` masih ada di `Proyek/` (di luar repo).
+* Roadmap Langkah 0 meminta `ROADMAP_PENGERJAAN.md` di `docs/`, tetapi AGENTS.md meletakkannya di akar; dipakai akar.
+
+### 📌 Status & Rencana Selanjutnya
+* Langkah 0 selesai; berikutnya Tahap 8A di percakapan baru. PND-01–04 dan PND-12 menunggu jawaban mitra.
