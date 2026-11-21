@@ -1,3 +1,370 @@
 @import "tailwindcss";
 
-/* Blok @theme (palet 60-30-10, tipografi, spasi, dan warna status) akan dilengkapi di Tahap 9C. */
+@theme {
+  /* ==========================================================================
+     PALET 60-30-10 SI-KKPRIS (AGENTS.md Bagian 7.B)
+     ========================================================================== */
+
+  /* 60% Utama — Latar krem hangat, permukaan putih bersih, teks kontras AA */
+  --color-canvas: #F6F2EA;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #FBF9F4;
+  --color-border: #E3DCCD;
+  --color-border-strong: #C8BFA8;
+  --color-border-input: #8B8372;
+  --color-ink: #1F2A24;
+  --color-ink-secondary: #49574F;
+  --color-ink-muted: #5C6B62;
+
+  /* 30% Kedua — Hijau tua koperasi (sidebar, header, tombol utama, tautan) */
+  --color-brand: #14452F;
+  --color-brand-hover: #0F3825;
+  --color-brand-active: #0B2A1C;
+  --color-brand-tint: #E3EFE8;
+  --color-brand-ink: #FFFFFF;
+  --color-brand-muted: #C2D8CC;
+
+  /* 10% Aksen — Emas/amber (hemat; teks di atas aksen SELALU gelap #1F2A24) */
+  --color-accent: #D99A1E;
+  --color-accent-tint: #FDF3DC;
+  --color-accent-ink: #1F2A24;
+
+  /* Warna Status — Terpisah & di luar 60-30-10; selalu disertai ikon + teks */
+  --color-status-success: #166534;
+  --color-status-success-bg: #ECFDF3;
+  --color-status-success-border: #A7F3D0;
+
+  --color-status-warning: #9A3412;
+  --color-status-warning-bg: #FFF3E8;
+  --color-status-warning-border: #FDBA74;
+
+  --color-status-danger: #B42318;
+  --color-status-danger-hover: #912018;
+  --color-status-danger-bg: #FEF3F2;
+  --color-status-danger-border: #FECACA;
+  --color-status-danger-ink: #FFFFFF;
+
+  --color-status-info: #1D4ED8;
+  --color-status-info-bg: #EFF6FF;
+  --color-status-info-border: #BFDBFE;
+
+  /* Tipografi — IBM Plex Sans via @fontsource (tanpa CDN) */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Radius terbatas & konsisten */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  /* Bayangan tunggal tipis (dilarang bayangan berlapis) */
+  --shadow-card: 0 1px 2px rgba(31, 42, 36, 0.06);
+  --shadow-dialog: 0 8px 24px rgba(31, 42, 36, 0.16);
+}
+
+/* ============================================================================
+   Gaya Dasar — Menghormati ukuran teks OS (tanpa override html font-size)
+   ============================================================================ */
+@layer base {
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: clip;
+  }
+
+  /* Fokus keyboard jelas pada semua elemen interaktif */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  /* Mencegah gulir halaman di balik modal dialog (modern-web-guidance/dialog) */
+  dialog:modal {
+    overscroll-behavior: contain;
+  }
+
+  dialog::backdrop {
+    background-color: rgba(31, 42, 36, 0.45);
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+}
+
+/* ============================================================================
+   Angka Finansial — Tabular figures (AGENTS.md 7.C)
+   ============================================================================ */
+.uang-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ============================================================================
+   Animasi Loading CSS Murni — Hanya transform & opacity (AGENTS.md 7.D)
+   ============================================================================ */
+
+/* 1. Spinner Arc (Animasi #1) */
+@keyframes kkpris-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.kkpris-spinner-arc {
+  animation: kkpris-spin 0.75s linear infinite;
+}
+
+.kkpris-spinner-reduced-label {
+  display: none;
+}
+
+/* 2. Indeterminate Top Progress Bar (Animasi #4) */
+@keyframes kkpris-indeterminate {
+  0% {
+    transform: translateX(-100%) scaleX(0.35);
+  }
+  50% {
+    transform: translateX(35%) scaleX(0.6);
+  }
+  100% {
+    transform: translateX(100%) scaleX(0.35);
+  }
+}
+
+.kkpris-top-progress-bar {
+  transform-origin: left center;
+  animation: kkpris-indeterminate 1.2s ease-in-out infinite;
+}
+
+/* 3. Skeleton Shimmer (Animasi #5) */
+@keyframes kkpris-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.kkpris-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-border);
+}
+
+.kkpris-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%
+  );
+  animation: kkpris-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Hormati prefers-reduced-motion sesuai AGENTS.md 7.D:
+   - Shimmer menjadi blok statis
+   - Spinner menjadi teks "Memuat…" tanpa gerak
+   - Indeterminate bar menjadi indikator statis */
+@media (prefers-reduced-motion: reduce) {
+  .kkpris-spinner-arc {
+    display: none;
+    animation: none;
+  }
+
+  .kkpris-spinner-reduced-label {
+    display: inline;
+  }
+
+  .kkpris-skeleton::after {
+    display: none;
+    animation: none;
+  }
+
+  .kkpris-top-progress-bar {
+    animation: none;
+    transform: translateX(0) scaleX(1);
+    opacity: 0.75;
+  }
+}
+
+/* ============================================================================
+   Navigation Drawer Native (<dialog>) untuk layar di bawah lg (AGENTS.md 7.F)
+   ============================================================================ */
+.kkpris-drawer {
+  inset: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.kkpris-drawer[open] {
+  display: flex;
+}
+
+.kkpris-drawer-panel {
+  width: min(18rem, 84dvw);
+  height: 100dvh;
+  max-height: 100dvh;
+  background-color: var(--color-brand);
+  color: var(--color-brand-ink);
+  box-shadow: var(--shadow-dialog);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes kkpris-drawer-in {
+    from {
+      transform: translateX(-100%);
+      opacity: 0.9;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .kkpris-drawer[open] .kkpris-drawer-panel {
+    animation: kkpris-drawer-in 180ms ease-out;
+  }
+}
+
+/* ============================================================================
+   Dialog Modal Native (<dialog>) — Responsif Mobile-First (AGENTS.md 7.F)
+   ============================================================================ */
+.kkpris-modal {
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-dialog);
+  width: calc(100dvw - 1.5rem);
+  max-width: 32rem;
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+}
+
+.kkpris-modal[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 639px) {
+  .kkpris-modal {
+    margin: auto auto 0.75rem auto;
+    width: calc(100dvw - 1rem);
+  }
+}
+
+/* ============================================================================
+   Toast Popover Container (modern-web-guidance/persistent-toast-notifications)
+   ============================================================================ */
+.kkpris-toast-region {
+  position: fixed;
+  inset: auto 1rem 1rem 1rem;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (min-width: 640px) {
+  .kkpris-toast-region {
+    inset: auto 1.5rem 1.5rem auto;
+    width: 24rem;
+    max-width: calc(100dvw - 2rem);
+  }
+}
+
+.kkpris-toast-item {
+  pointer-events: auto;
+  margin: 0;
+  position: static;
+  inset: auto;
+  width: 100%;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dialog);
+}
+
+/* ============================================================================
+   Tabel Responsif Berbasis @container (AGENTS.md 7.F & responsive-table)
+   ============================================================================ */
+.kkpris-table-container {
+  container-type: inline-size;
+  max-inline-size: 100%;
+  overflow-x: auto;
+}
+
+.kkpris-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+}
+
+@container (width < 40rem) {
+  .kkpris-table-stacked,
+  .kkpris-table-stacked tbody,
+  .kkpris-table-stacked tr,
+  .kkpris-table-stacked td {
+    display: block;
+    width: 100%;
+  }
+
+  .kkpris-table-stacked thead {
+    display: none;
+  }
+
+  .kkpris-table-stacked tr {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface);
+    margin-block-end: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .kkpris-table-stacked tr:last-child {
+    margin-block-end: 0;
+  }
+
+  .kkpris-table-stacked td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.375rem 0;
+    border-bottom: 1px solid var(--color-surface-subtle);
+    text-align: right;
+  }
+
+  .kkpris-table-stacked td:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .kkpris-table-stacked td::before {
+    content: attr(data-label);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-ink-muted);
+    text-align: left;
+    flex-shrink: 0;
+  }
+}
