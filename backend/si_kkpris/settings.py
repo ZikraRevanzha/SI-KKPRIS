@@ -49,6 +49,9 @@ except InvalidOperation as exc:
         'MARGIN_PERSEN_SEMENTARA harus berupa angka desimal, contoh: 1.00'
     ) from exc
 
+# Password awal untuk management command seed_master (dibaca dari env, tidak ditulis di kode)
+SEED_PASSWORD = os.getenv('SEED_PASSWORD', '').strip()
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',

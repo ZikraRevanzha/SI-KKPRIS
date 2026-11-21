@@ -2,11 +2,14 @@
 Unit Test untuk 16 Model & Aturan Bisnis Utama SI-KKPRIS (SRS v4.0).
 """
 
+import os
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 from django.contrib.staticfiles.finders import find
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.template.loader import get_template
 from django.test import TestCase, override_settings
 from koperasi.models import (
@@ -38,15 +41,18 @@ from koperasi.models import (
 )
 
 
+@override_settings(SEED_PASSWORD='dummy-test-pass-8a')
 class SIKKPRISModelsTestCase(TestCase):
+    TEST_SEED_PASSWORD = 'dummy-test-pass-8a'
+
     def setUp(self):
         call_command('seed_master', verbosity=0)
-        self.ketua = Pengguna.objects.get(username='ketua')
-        self.bendahara = Pengguna.objects.get(username='bendahara')
+        self.ketua = Pengguna.objects.get(username='ketua01')
+        self.bendahara = Pengguna.objects.get(username='bendahara01')
         self.anggota = Anggota.objects.get(no_anggota='KKP-2026-001')
 
     def test_01_autentikasi_dan_audit_log(self):
-        user_valid = Pengguna.verifikasiKredensial('bendahara', 'Kkpris2026!')
+        user_valid = Pengguna.verifikasiKredensial('bendahara01', self.TEST_SEED_PASSWORD)
         self.assertIsNotNone(user_valid)
         self.assertEqual(user_valid.peran, 'BENDAHARA')
 
@@ -236,7 +242,7 @@ class SIKKPRISModelsTestCase(TestCase):
         resign = PengunduranDiri.simpanPermohonanResign(
             anggota_id=self.anggota.id,
             alasan='Pindah Tugas ke Provinsi Lain',
-            surat_url='media/resign/surat_budi.pdf',
+            surat_url='media/resign/surat_anggota01.pdf',
         )
         self.anggota.refresh_from_db()
         self.assertEqual(self.anggota.status, StatusAnggotaChoices.PROSES_RESIGN)
@@ -250,7 +256,7 @@ class SIKKPRISModelsTestCase(TestCase):
         # 2. Login Bendahara & akses Dashboard Pengurus
         resp_login_bendahara = self.client.post(
             '/login/',
-            {'username': 'bendahara', 'password': 'Kkpris2026!'},
+            {'username': 'bendahara01', 'password': self.TEST_SEED_PASSWORD},
             follow=True,
         )
         self.assertEqual(resp_login_bendahara.status_code, 200)
@@ -267,7 +273,7 @@ class SIKKPRISModelsTestCase(TestCase):
         # 5. Login Anggota menggunakan Nomor Anggota (KKP-2026-001) & akses Beranda Anggota
         resp_login_anggota = self.client.post(
             '/login/',
-            {'username': 'KKP-2026-001', 'password': 'Kkpris2026!'},
+            {'username': 'KKP-2026-001', 'password': self.TEST_SEED_PASSWORD},
             follow=True,
         )
         self.assertEqual(resp_login_anggota.status_code, 200)
@@ -306,7 +312,7 @@ class SIKKPRISModelsTestCase(TestCase):
     def test_06_anggota_controller_dan_kliring_resign_tahap_3(self):
         """Menguji fitur Tahap 3: Data Anggota, Form Anggota Baru, Ajukan & Verifikasi Resign."""
         # 1. Login sebagai Bendahara & buka halaman Data Anggota (WD-03 & WD-04)
-        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+        self.client.post('/login/', {'username': 'bendahara01', 'password': self.TEST_SEED_PASSWORD})
         resp_list = self.client.get('/anggota/')
         self.assertEqual(resp_list.status_code, 200)
         self.assertTemplateUsed(resp_list, 'anggota/data_anggota.html')
@@ -317,12 +323,12 @@ class SIKKPRISModelsTestCase(TestCase):
         resp_tambah = self.client.post(
             '/anggota/tambah/',
             {
-                'nama': 'Rina Marlina, S.Pd.',
-                'nik': '1372019988770009',
+                'nama': 'Anggota Uji Sembilan',
+                'nik': '0000000000000009',
                 'no_anggota': 'KKP-2026-009',
                 'status_kepegawaian': 'PNS',
                 'masa_dinas_tahun': 8,
-                'no_hp': '081299887766',
+                'no_hp': '080000000009',
                 'tanggal_masuk': '2026-11-16',
                 'cicilan_simpanan_pokok': 'LUNAS_AWAL',
                 'cicilan_simpanan_khusus': 'LUNAS_AWAL',
@@ -330,31 +336,31 @@ class SIKKPRISModelsTestCase(TestCase):
             follow=True,
         )
         self.assertEqual(resp_tambah.status_code, 200)
-        anggota_rina = Anggota.objects.get(no_anggota='KKP-2026-009')
-        self.assertEqual(anggota_rina.nama, 'Rina Marlina, S.Pd.')
+        anggota_uji = Anggota.objects.get(no_anggota='KKP-2026-009')
+        self.assertEqual(anggota_uji.nama, 'Anggota Uji Sembilan')
         self.assertEqual(
-            TransaksiSimpanan.hitungTotalSimpananAnggota(anggota_rina.id),
+            TransaksiSimpanan.hitungTotalSimpananAnggota(anggota_uji.id),
             Decimal('850000.00'),
         )
 
         # 3. Edit Profil Anggota oleh Bendahara
         resp_edit = self.client.post(
-            f'/anggota/{anggota_rina.id}/edit/',
+            f'/anggota/{anggota_uji.id}/edit/',
             {
-                'nama': 'Rina Marlina, S.Pd., M.Pd.',
-                'nik': '1372019988770009',
+                'nama': 'Anggota Uji Sembilan Edit',
+                'nik': '0000000000000009',
                 'status_kepegawaian': 'PNS',
                 'masa_dinas_tahun': 9,
-                'no_hp': '081299887700',
+                'no_hp': '080000000099',
             },
             follow=True,
         )
         self.assertEqual(resp_edit.status_code, 200)
-        anggota_rina.refresh_from_db()
-        self.assertEqual(anggota_rina.nama, 'Rina Marlina, S.Pd., M.Pd.')
-        self.assertEqual(anggota_rina.masa_dinas_tahun, 9)
+        anggota_uji.refresh_from_db()
+        self.assertEqual(anggota_uji.nama, 'Anggota Uji Sembilan Edit')
+        self.assertEqual(anggota_uji.masa_dinas_tahun, 9)
 
-        # 4. Logout Bendahara, Login sebagai Anggota Rina & Ajukan Pengunduran Diri (WD-22)
+        # 4. Logout Bendahara, Login sebagai Anggota Uji & Ajukan Pengunduran Diri (WD-22)
         self.client.get('/logout/')
         self.client.post('/login/', {'username': 'KKP-2026-009', 'password': 'Kkpris2026!'})
 
@@ -375,17 +381,17 @@ class SIKKPRISModelsTestCase(TestCase):
             follow=True,
         )
         self.assertEqual(resp_submit_resign.status_code, 200)
-        anggota_rina.refresh_from_db()
-        self.assertEqual(anggota_rina.status, StatusAnggotaChoices.PROSES_RESIGN)
+        anggota_uji.refresh_from_db()
+        self.assertEqual(anggota_uji.status, StatusAnggotaChoices.PROSES_RESIGN)
 
-        resign_obj = PengunduranDiri.objects.get(anggota=anggota_rina)
+        resign_obj = PengunduranDiri.objects.get(anggota=anggota_uji)
         self.assertEqual(resign_obj.total_hak_simpanan, Decimal('850000.00'))
         self.assertEqual(resign_obj.total_kewajiban_pembiayaan, Decimal('0.00'))
         self.assertEqual(resign_obj.selisih_akhir, Decimal('850000.00'))
 
         # 5. Logout Anggota, Login Bendahara & Verifikasi Kliring Pengunduran Diri (WD-17)
         self.client.get('/logout/')
-        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+        self.client.post('/login/', {'username': 'bendahara01', 'password': self.TEST_SEED_PASSWORD})
 
         resp_verif_page = self.client.get(f'/anggota/verifikasi-resign/?pilih={resign_obj.id}')
         self.assertEqual(resp_verif_page.status_code, 200)
@@ -400,12 +406,12 @@ class SIKKPRISModelsTestCase(TestCase):
         self.assertEqual(resp_verif_post.status_code, 200)
 
         resign_obj.refresh_from_db()
-        anggota_rina.refresh_from_db()
-        anggota_rina.pengguna.refresh_from_db()
+        anggota_uji.refresh_from_db()
+        anggota_uji.pengguna.refresh_from_db()
         self.assertEqual(resign_obj.status_pengajuan, 'DISETUJUI_KELUAR')
         self.assertEqual(resign_obj.status_kliring, 'SELESAI_KLIRING')
-        self.assertEqual(anggota_rina.status, StatusAnggotaChoices.NON_AKTIF_KELUAR)
-        self.assertFalse(anggota_rina.pengguna.is_aktif)
+        self.assertEqual(anggota_uji.status, StatusAnggotaChoices.NON_AKTIF_KELUAR)
+        self.assertFalse(anggota_uji.pengguna.is_aktif)
 
     def test_07_simpanan_controller_dan_ui_tahap_4(self):
         """Menguji fitur Tahap 4: Kelola Simpanan, Transaksi Baru, Proteksi BR-08, Cetak Bukti & Ekspor."""
@@ -413,7 +419,7 @@ class SIKKPRISModelsTestCase(TestCase):
         shr = JenisSimpanan.objects.get(kode='SHR')
 
         # 1. Login sebagai Bendahara & buka halaman Kelola Simpanan (WD-05 & WD-06)
-        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+        self.client.post('/login/', {'username': 'bendahara01', 'password': self.TEST_SEED_PASSWORD})
         resp_smp = self.client.get('/simpanan/')
         self.assertEqual(resp_smp.status_code, 200)
         self.assertTemplateUsed(resp_smp, 'simpanan/kelola_simpanan.html')
@@ -522,7 +528,7 @@ class SIKKPRISModelsTestCase(TestCase):
 
         # 7. Portal Mandiri 'Simpanan Saya' untuk Peran ANGGOTA (UC-02)
         self.client.get('/logout/')
-        self.client.post('/login/', {'username': 'KKP-2026-001', 'password': 'Kkpris2026!'})
+        self.client.post('/login/', {'username': 'KKP-2026-001', 'password': self.TEST_SEED_PASSWORD})
         resp_anggota_smp = self.client.get('/simpanan/')
         self.assertEqual(resp_anggota_smp.status_code, 200)
         self.assertTemplateUsed(resp_anggota_smp, 'simpanan/simpanan_anggota.html')
@@ -535,7 +541,7 @@ class SIKKPRISModelsTestCase(TestCase):
         akad_ijr = JenisAkad.objects.get(kode='AKD-IJR')
 
         # 1. Login sebagai Anggota & buka halaman Wizard 3 Langkah Ajukan Pembiayaan (WD-19, WD-20, WD-21)
-        self.client.post('/login/', {'username': 'KKP-2026-001', 'password': 'Kkpris2026!'})
+        self.client.post('/login/', {'username': 'KKP-2026-001', 'password': self.TEST_SEED_PASSWORD})
         resp_wizard = self.client.get('/pembiayaan/ajukan/')
         self.assertEqual(resp_wizard.status_code, 200)
         self.assertTemplateUsed(resp_wizard, 'pembiayaan/ajukan_pembiayaan.html')
@@ -615,7 +621,7 @@ class SIKKPRISModelsTestCase(TestCase):
 
         # 6. Login sebagai Bendahara -> Buka Daftar Pembiayaan (WD-08) & Detail Pembiayaan (WD-09)
         self.client.get('/logout/')
-        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+        self.client.post('/login/', {'username': 'bendahara01', 'password': self.TEST_SEED_PASSWORD})
 
         resp_daftar = self.client.get('/pembiayaan/')
         self.assertEqual(resp_daftar.status_code, 200)
@@ -664,7 +670,7 @@ class SIKKPRISModelsTestCase(TestCase):
 
         # 9. Login sebagai Ketua -> Buka Persetujuan Kas (WD-18 & Konfirmasi Persetujuan.png) & Setujui Kas
         self.client.get('/logout/')
-        self.client.post('/login/', {'username': 'ketua', 'password': 'Kkpris2026!'})
+        self.client.post('/login/', {'username': 'ketua01', 'password': self.TEST_SEED_PASSWORD})
 
         resp_persetujuan_kas = self.client.get('/persetujuan-kas/')
         self.assertEqual(resp_persetujuan_kas.status_code, 200)
@@ -687,7 +693,7 @@ class SIKKPRISModelsTestCase(TestCase):
 
         # 10. Login kembali sebagai Bendahara -> Catat Realisasi Pencairan & Auto-Generate Jadwal Angsuran
         self.client.get('/logout/')
-        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+        self.client.post('/login/', {'username': 'bendahara01', 'password': self.TEST_SEED_PASSWORD})
 
         resp_realisasi_valid = self.client.post(
             f'/pembiayaan/{pmb_besar.id}/realisasi/',
@@ -760,7 +766,7 @@ class SIKKPRISModelsTestCase(TestCase):
         jadwal_2 = JadwalAngsuran.objects.get(pembiayaan=pmb, angsuran_ke=2)
 
         # 1. Login sebagai Bendahara & buka halaman Kelola Angsuran (WD-10)
-        self.client.post('/login/', {'username': 'bendahara', 'password': 'Kkpris2026!'})
+        self.client.post('/login/', {'username': 'bendahara01', 'password': self.TEST_SEED_PASSWORD})
         resp_ang = self.client.get('/angsuran/')
         self.assertEqual(resp_ang.status_code, 200)
         self.assertTemplateUsed(resp_ang, 'angsuran/kelola_angsuran.html')
@@ -833,9 +839,9 @@ class SIKKPRISModelsTestCase(TestCase):
         self.assertEqual(rekap_des.total_tagihan, Decimal('2270000.00'))
 
         # 5. Update Potongan Belanja Toko Anggota (Rp 80.000) -> Total Tagihan menjadi Rp 2.350.000
-        detail_budi = DetailRekapPotongGaji.objects.get(rekap_potong_gaji=rekap_des, anggota=self.anggota)
+        detail_anggota = DetailRekapPotongGaji.objects.get(rekap_potong_gaji=rekap_des, anggota=self.anggota)
         resp_toko = self.client.post(
-            f'/rekap-potong-gaji/detail/{detail_budi.id}/update-toko/',
+            f'/rekap-potong-gaji/detail/{detail_anggota.id}/update-toko/',
             {'nominal_simpanan_sukarela': '80000'},
             follow=True,
         )
@@ -880,7 +886,7 @@ class SIKKPRISModelsTestCase(TestCase):
         call_command('seed_master', '--with-demo', verbosity=0)
 
         # 2. Login sebagai Ketua & buka halaman Laporan Keuangan (WD-14)
-        self.client.post('/login/', {'username': 'ketua', 'password': 'Kkpris2026!'})
+        self.client.post('/login/', {'username': 'ketua01', 'password': self.TEST_SEED_PASSWORD})
 
         for tab in ('SIMPANAN', 'PEMBIAYAAN', 'KAS_MASUK_KELUAR'):
             resp_lap = self.client.get(f'/laporan-keuangan/?tab={tab}&periode=TAHUNAN&tahun=2026')
@@ -941,6 +947,14 @@ class SIKKPRISModelsTestCase(TestCase):
         self.assertEqual(hasil['total_margin'], Decimal('1500000.00'))
         self.assertEqual(hasil['total_kewajiban'], Decimal('11500000.00'))
         self.assertEqual(hasil['angsuran_bulanan'], Decimal('1150000.00'))
+
+    @override_settings(SEED_PASSWORD='')
+    def test_12_seed_master_wajib_seed_password_dari_env(self):
+        """Memastikan seed_master menolak jalan jika SEED_PASSWORD kosong (tidak hardcoded)."""
+        with patch.dict(os.environ, {'SEED_PASSWORD': ''}):
+            with self.assertRaises(CommandError):
+                call_command('seed_master', verbosity=0)
+
 
 
 

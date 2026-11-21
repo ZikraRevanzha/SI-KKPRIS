@@ -6,11 +6,12 @@ Management command untuk mengisi Master Data awal SI-KKPRIS sesuai SRS v4.0:
 - Opsi --with-demo: mengisi contoh transaksi simpanan & pembiayaan untuk tampilan Dashboard UI
 """
 
+import os
 from datetime import date
 from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from koperasi.models import (
     Agunan,
@@ -140,57 +141,65 @@ class Command(BaseCommand):
             )
         self.stdout.write(self.style.SUCCESS('[OK] 3 Skema Master Jenis Akad Syariah berhasil diinisialisasi.'))
 
-        # 3. Seed 3 Akun Peran Utama (KETUA, BENDAHARA, ANGGOTA)
-        default_pw = make_password('Kkpris2026!')
+        # 3. Seed 3 Akun Peran Utama Dummy (KETUA, BENDAHARA, ANGGOTA)
+        raw_seed_password = (
+            getattr(settings, 'SEED_PASSWORD', '') or os.getenv('SEED_PASSWORD', '')
+        ).strip()
+        if not raw_seed_password:
+            raise CommandError(
+                'Environment variable SEED_PASSWORD belum diatur. '
+                'Tambahkan SEED_PASSWORD di backend/.env sesuai backend/.env.example.'
+            )
+        default_pw = make_password(raw_seed_password)
 
         ketua, _ = Pengguna.objects.update_or_create(
-            username='ketua',
+            username='ketua01',
             defaults={
                 'password_hash': default_pw,
-                'nama_lengkap': 'Drs. H. Ketua KKPRIS SMKN 1 Kota Solok',
+                'nama_lengkap': 'Ketua Dummy Satu',
                 'peran': PeranPenggunaChoices.KETUA,
                 'is_aktif': True,
             },
         )
         bendahara, _ = Pengguna.objects.update_or_create(
-            username='bendahara',
+            username='bendahara01',
             defaults={
                 'password_hash': default_pw,
-                'nama_lengkap': 'Eni Mailiza, S.ST, M.Pd.E',
+                'nama_lengkap': 'Bendahara Dummy Satu',
                 'peran': PeranPenggunaChoices.BENDAHARA,
                 'is_aktif': True,
             },
         )
-        user_anggota, _ = Pengguna.objects.update_or_create(
-            username='198205142009012004',
+        user_anggota_01, _ = Pengguna.objects.update_or_create(
+            username='anggota01',
             defaults={
                 'password_hash': default_pw,
-                'nama_lengkap': 'Budi Santoso, S.Pd., M.Kom.',
+                'nama_lengkap': 'Anggota Dummy Satu',
                 'peran': PeranPenggunaChoices.ANGGOTA,
                 'is_aktif': True,
             },
         )
 
-        anggota_budi, _ = Anggota.objects.update_or_create(
-            pengguna=user_anggota,
+        anggota_01, _ = Anggota.objects.update_or_create(
+            pengguna=user_anggota_01,
             defaults={
                 'no_anggota': 'KKP-2026-001',
-                'nik': '1372011405820001',
-                'nama': 'Budi Santoso, S.Pd., M.Kom.',
+                'nik': '0000000000000001',
+                'nama': 'Anggota Dummy Satu',
                 'status_kepegawaian': StatusKepegawaianChoices.PNS,
                 'masa_dinas_tahun': 15,
-                'no_hp': '081267890123',
+                'no_hp': '080000000001',
                 'tanggal_masuk': date(2015, 1, 10),
                 'status': StatusAnggotaChoices.AKTIF,
             },
         )
         self.stdout.write(
             self.style.SUCCESS(
-                f'[OK] 3 Akun Peran Utama ({ketua.username}, {bendahara.username}, {user_anggota.username}) berhasil diinisialisasi.'
+                f'[OK] 3 Akun Peran Utama ({ketua.username}, {bendahara.username}, {user_anggota_01.username}) berhasil diinisialisasi.'
             )
         )
 
-        if options.get('with_demo') and not TransaksiSimpanan.objects.filter(anggota=anggota_budi).exists():
+        if options.get('with_demo') and not TransaksiSimpanan.objects.filter(anggota=anggota_01).exists():
             peta_js = {js.kode: js for js in JenisSimpanan.objects.all()}
             demo_setoran = [
                 ('KUI-DEMO-001', 'SPK', Decimal('350000.00'), 'TUNAI', 'Setoran lunas Simpanan Pokok anggota'),
@@ -201,7 +210,7 @@ class Command(BaseCommand):
             ]
             for no_kui, kode_js, nom, metode, ket in demo_setoran:
                 TransaksiSimpanan.simpanMutasiSimpanan({
-                    'anggota_id': anggota_budi.id,
+                    'anggota_id': anggota_01.id,
                     'jenis_simpanan_id': peta_js[kode_js].id,
                     'bendahara_id': bendahara.id,
                     'no_kuitansi': no_kui,
@@ -214,7 +223,7 @@ class Command(BaseCommand):
             akad_mrb = JenisAkad.objects.get(kode='AKD-MRB')
             pmb = Pembiayaan.simpanPengajuanBaru({
                 'no_pembiayaan': 'PMB-2026-001',
-                'anggota_id': anggota_budi.id,
+                'anggota_id': anggota_01.id,
                 'jenis_akad_id': akad_mrb.id,
                 'tanggal_pengajuan': date(2026, 7, 10),
                 'harga_pokok': Decimal('24000000.00'),
@@ -235,7 +244,7 @@ class Command(BaseCommand):
                 'bendahara_id': bendahara.id,
                 'tanggal_realisasi': date(2026, 7, 12),
                 'metode_pencairan': MetodePencairanChoices.TRANSFER_BANK,
-                'nomor_referensi_bank': 'BNI-SOLOK-20260712',
+                'nomor_referensi_bank': 'REF-DUMMY-20260712',
                 'nominal_cair': Decimal('24000000.00'),
                 'bukti_transfer_url': 'media/pencairan/bukti_pmb_001.pdf',
             })
@@ -266,7 +275,7 @@ class Command(BaseCommand):
                 pengguna_id=bendahara.id,
                 aksi='SEED_DATA_AWAL',
                 nama_tabel='transaksi_simpanan',
-                record_id=anggota_budi.id,
+                record_id=anggota_01.id,
                 detail='Inisialisasi saldo 5 skema simpanan & pembiayaan Murabahah anggota KKP-2026-001.',
             )
             AuditTrailLog.catatLogAudit(
@@ -280,25 +289,25 @@ class Command(BaseCommand):
         if options.get('with_demo') and not Anggota.objects.filter(no_anggota='KKP-2026-002').exists():
             peta_js = {js.kode: js for js in JenisSimpanan.objects.all()}
 
-            # Anggota Demo #2: Siti Rahmah, S.Pd. (PPPK Aktif)
-            user_siti, _ = Pengguna.objects.update_or_create(
-                username='199003212022212008',
+            # Anggota Demo #2: Anggota Dummy Dua (PPPK Aktif)
+            user_anggota_02, _ = Pengguna.objects.update_or_create(
+                username='anggota02',
                 defaults={
                     'password_hash': default_pw,
-                    'nama_lengkap': 'Siti Rahmah, S.Pd.',
+                    'nama_lengkap': 'Anggota Dummy Dua',
                     'peran': PeranPenggunaChoices.ANGGOTA,
                     'is_aktif': True,
                 },
             )
-            anggota_siti, _ = Anggota.objects.update_or_create(
-                pengguna=user_siti,
+            anggota_02, _ = Anggota.objects.update_or_create(
+                pengguna=user_anggota_02,
                 defaults={
                     'no_anggota': 'KKP-2026-002',
-                    'nik': '1372012103900002',
-                    'nama': 'Siti Rahmah, S.Pd.',
+                    'nik': '0000000000000002',
+                    'nama': 'Anggota Dummy Dua',
                     'status_kepegawaian': StatusKepegawaianChoices.PPPK,
                     'masa_dinas_tahun': 4,
-                    'no_hp': '081374556677',
+                    'no_hp': '080000000002',
                     'tanggal_masuk': date(2022, 3, 1),
                     'status': StatusAnggotaChoices.AKTIF,
                 },
@@ -310,7 +319,7 @@ class Command(BaseCommand):
                 ('KUI-DEMO-204', 'SHR', Decimal('450000.00')),
             ]:
                 TransaksiSimpanan.simpanMutasiSimpanan({
-                    'anggota_id': anggota_siti.id,
+                    'anggota_id': anggota_02.id,
                     'jenis_simpanan_id': peta_js[kode_js].id,
                     'bendahara_id': bendahara.id,
                     'no_kuitansi': no_kui,
@@ -320,25 +329,25 @@ class Command(BaseCommand):
                     'keterangan': f'Setoran {peta_js[kode_js].nama} Anggota KKP-2026-002',
                 })
 
-            # Anggota Demo #3: Drs. Hendra Wijaya (Pensiunan — Proses Resign / Menunggu Kliring)
-            user_hendra, _ = Pengguna.objects.update_or_create(
-                username='196608171992031005',
+            # Anggota Demo #3: Anggota Dummy Tiga (Pensiunan — Proses Resign / Menunggu Kliring)
+            user_anggota_03, _ = Pengguna.objects.update_or_create(
+                username='anggota03',
                 defaults={
                     'password_hash': default_pw,
-                    'nama_lengkap': 'Drs. Hendra Wijaya',
+                    'nama_lengkap': 'Anggota Dummy Tiga',
                     'peran': PeranPenggunaChoices.ANGGOTA,
                     'is_aktif': True,
                 },
             )
-            anggota_hendra, _ = Anggota.objects.update_or_create(
-                pengguna=user_hendra,
+            anggota_03, _ = Anggota.objects.update_or_create(
+                pengguna=user_anggota_03,
                 defaults={
                     'no_anggota': 'KKP-2026-003',
-                    'nik': '1372021708660003',
-                    'nama': 'Drs. Hendra Wijaya',
+                    'nik': '0000000000000003',
+                    'nama': 'Anggota Dummy Tiga',
                     'status_kepegawaian': StatusKepegawaianChoices.PENSIUNAN,
                     'masa_dinas_tahun': 32,
-                    'no_hp': '081266112233',
+                    'no_hp': '080000000003',
                     'tanggal_masuk': date(2005, 7, 1),
                     'status': StatusAnggotaChoices.AKTIF,
                 },
@@ -350,7 +359,7 @@ class Command(BaseCommand):
                 ('KUI-DEMO-304', 'SBR', Decimal('2500000.00')),
             ]:
                 TransaksiSimpanan.simpanMutasiSimpanan({
-                    'anggota_id': anggota_hendra.id,
+                    'anggota_id': anggota_03.id,
                     'jenis_simpanan_id': peta_js[kode_js].id,
                     'bendahara_id': bendahara.id,
                     'no_kuitansi': no_kui,
@@ -361,22 +370,22 @@ class Command(BaseCommand):
                 })
 
             PengunduranDiri.simpanPermohonanResign(
-                anggota_id=anggota_hendra.id,
+                anggota_id=anggota_03.id,
                 alasan='Pensiun / Purna Tugas — Memasuki masa purna bakti TMT 1 November 2026',
-                surat_url='media/resign/surat_pensiun_hendra_wijaya.pdf',
+                surat_url='media/resign/surat_pensiun_anggota03.pdf',
             )
             self.stdout.write(self.style.SUCCESS('[OK] Data contoh transaksi, anggota tambahan & pengajuan resign berhasil ditambahkan.'))
 
         if options.get('with_demo') and not Pembiayaan.objects.filter(no_pembiayaan='PMB-2026-002').exists():
-            anggota_siti = Anggota.objects.filter(no_anggota='KKP-2026-002').first()
-            if anggota_siti:
+            anggota_02 = Anggota.objects.filter(no_anggota='KKP-2026-002').first()
+            if anggota_02:
                 akad_ijr = JenisAkad.objects.get(kode='AKD-IJR')
                 akad_mrb = JenisAkad.objects.get(kode='AKD-MRB')
 
-                # Demo Pembiayaan #2: Siti Rahmah — Ijarah Rp 18.000.000 (Menunggu Persetujuan Ketua)
+                # Demo Pembiayaan #2: Anggota Dummy Dua — Ijarah Rp 18.000.000 (Menunggu Persetujuan Ketua)
                 pmb_002 = Pembiayaan.simpanPengajuanBaru({
                     'no_pembiayaan': 'PMB-2026-002',
-                    'anggota_id': anggota_siti.id,
+                    'anggota_id': anggota_02.id,
                     'jenis_akad_id': akad_ijr.id,
                     'tanggal_pengajuan': date(2026, 11, 10),
                     'harga_pokok': Decimal('18000000.00'),
@@ -397,10 +406,10 @@ class Command(BaseCommand):
                     StatusPembiayaanChoices.MENUNGGU_PERSETUJUAN_KETUA,
                 )
 
-                # Demo Pembiayaan #3: Siti Rahmah — Murabahah Rp 75.000.000 (> Rp 70 Jt + Agunan BPKB, Disetujui Ketua / Siap Cair)
+                # Demo Pembiayaan #3: Anggota Dummy Dua — Murabahah Rp 75.000.000 (> Rp 70 Jt + Agunan BPKB, Disetujui Ketua / Siap Cair)
                 pmb_003 = Pembiayaan.simpanPengajuanBaru({
                     'no_pembiayaan': 'PMB-2026-003',
-                    'anggota_id': anggota_siti.id,
+                    'anggota_id': anggota_02.id,
                     'jenis_akad_id': akad_mrb.id,
                     'tanggal_pengajuan': date(2026, 11, 12),
                     'harga_pokok': Decimal('75000000.00'),
@@ -411,9 +420,9 @@ class Command(BaseCommand):
                 })
                 Agunan.simpanDataAgunan(pmb_003.id, {
                     'jenis_agunan': JenisAgunanChoices.BPKB_MOBIL,
-                    'no_registrasi': 'BPKB-BA-1892-PK',
+                    'no_registrasi': 'BPKB-DUMMY-0002',
                     'nilai_taksiran': Decimal('115000000.00'),
-                    'berkas_url': 'media/agunan/bpkb_mobil_siti_rahmah.pdf',
+                    'berkas_url': 'media/agunan/bpkb_mobil_anggota02.pdf',
                 })
                 PersetujuanPembiayaan.simpanKeputusanOtorisasi(
                     pembiayaan_id=pmb_003.id,
@@ -437,15 +446,15 @@ class Command(BaseCommand):
 
         if options.get('with_demo') and not RekapPotongGaji.objects.filter(periode_bulan='2026-11').exists():
             pmb_001 = Pembiayaan.objects.filter(no_pembiayaan='PMB-2026-001').first()
-            anggota_siti = Anggota.objects.filter(no_anggota='KKP-2026-002').first()
-            if pmb_001 and anggota_siti:
+            anggota_02 = Anggota.objects.filter(no_anggota='KKP-2026-002').first()
+            if pmb_001 and anggota_02:
                 jadwal_ke_5 = JadwalAngsuran.objects.filter(pembiayaan=pmb_001, angsuran_ke=5).first()
                 angsuran_ke_5 = jadwal_ke_5.jumlah_angsuran if jadwal_ke_5 else Decimal('0.00')
                 simpanan_wajib = Decimal('150000.00')
                 rekap_nov = RekapPotongGaji.buatHeaderRekap('2026-11', bendahara.id, kode_rekap='RKP-202611')
                 DetailRekapPotongGaji.simpanRincianRekapAnggota(rekap_nov.id, [
                     {
-                        'anggota_id': anggota_budi.id,
+                        'anggota_id': anggota_01.id,
                         'jadwal_angsuran_id': jadwal_ke_5.id if jadwal_ke_5 else None,
                         'nominal_simpanan_wajib': simpanan_wajib,
                         'nominal_simpanan_sukarela': Decimal('75000.00'),
@@ -453,7 +462,7 @@ class Command(BaseCommand):
                         'subtotal_potongan': simpanan_wajib + Decimal('75000.00') + angsuran_ke_5,
                     },
                     {
-                        'anggota_id': anggota_siti.id,
+                        'anggota_id': anggota_02.id,
                         'jadwal_angsuran_id': None,
                         'nominal_simpanan_wajib': simpanan_wajib,
                         'nominal_simpanan_sukarela': Decimal('50000.00'),
@@ -471,11 +480,11 @@ class Command(BaseCommand):
                 if jadwal_ke_5:
                     angsuran_teks = f'{angsuran_ke_5:,.2f}'.replace(',', '_').replace('.', ',').replace('_', '.')
                     NotifikasiTagihan.simpanLogNotifikasi({
-                        'anggota_id': anggota_budi.id,
+                        'anggota_id': anggota_01.id,
                         'jadwal_angsuran_id': jadwal_ke_5.id,
                         'bendahara_id': bendahara.id,
                         'kanal_kirim': KanalNotifikasiChoices.WHATSAPP,
-                        'tujuan_kirim': anggota_budi.no_hp,
+                        'tujuan_kirim': anggota_01.no_hp,
                         'isi_pesan': (
                             'Pengingat tagihan tanggal 10 Koperasi KKPRIS: Angsuran ke-5 PMB-2026-001 '
                             f'sebesar Rp {angsuran_teks} + Simpanan Wajib Rp 150.000.'
