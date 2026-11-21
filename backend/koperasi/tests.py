@@ -1276,6 +1276,15 @@ class SIKKPRISModelsTestCase(TestCase):
                 self.assertNotIn('Cetak', teks_pdf)
                 self.assertNotIn('Unduh', teks_pdf)
 
+    def test_18_konfigurasi_hasher_hanya_pbkdf2(self):
+        """Memastikan AUTH_PASSWORD_HASHERS hanya menggunakan PBKDF2PasswordHasher."""
+        from django.conf import settings as django_settings
+
+        self.assertEqual(
+            django_settings.AUTH_PASSWORD_HASHERS,
+            ['django.contrib.auth.hashers.PBKDF2PasswordHasher'],
+        )
+
 
 
 

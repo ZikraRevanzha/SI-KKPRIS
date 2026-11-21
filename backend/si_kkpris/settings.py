@@ -110,10 +110,9 @@ DATABASES = {
     }
 }
 
-# Password validation & Hashing (PBKDF2 SHA256 sesuai NFR Security)
+# Password validation & Hashing (PBKDF2 SHA256 saja sesuai NFR Security & AGENTS.md 4.F)
 AUTH_PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
-    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
 ]
 
 AUTH_PASSWORD_VALIDATORS = [
