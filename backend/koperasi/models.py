@@ -512,6 +512,54 @@ class Pembiayaan(models.Model):
         return f"{self.no_pembiayaan} - {self.anggota.nama} (Rp{self.harga_pokok:,.2f})"
 
     @staticmethod
+    def hitungRincianAngsuran(
+        harga_pokok: Decimal,
+        margin_persen: Decimal,
+        tenor_bulan: int,
+    ) -> list[tuple[Decimal, Decimal, Decimal]]:
+        """
+        Fungsi sumber tunggal yang menghasilkan daftar (porsi_pokok, porsi_margin, jumlah_angsuran)
+        untuk angsuran ke-1 s.d. ke-N dengan metode margin flat presisi DECIMAL(15,2).
+        margin_persen = persen dari pokok PER BULAN (flat). Satuan belum dikonfirmasi mitra (PND-01).
+        Selisih pembulatan pokok diserap angsuran terakhir (ke-N) sehingga:
+        - sum(porsi_pokok) == harga_pokok
+        - sum(jumlah_angsuran) == total_kewajiban
+        """
+        # PENDING PND-01: besaran dan satuan margin (per bulan/tahun/total) belum dikonfirmasi.
+        # PENDING PND-02: Hawalah memakai rumus yang sama dengan akad lain (belum dikonfirmasi).
+        # PENDING PND-06: pembulatan 2 desimal ROUND_HALF_UP; sisa diserap angsuran terakhir.
+        pokok = Decimal(str(harga_pokok)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        persen = Decimal(str(margin_persen)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        tenor = int(tenor_bulan)
+        if tenor < 1 or tenor > 72:
+            raise ValidationError('Tenor pembiayaan wajib berada pada rentang 1 s.d. 72 bulan.')
+
+        porsi_pokok_reguler = (pokok / Decimal(tenor)).quantize(
+            Decimal('0.01'), rounding=ROUND_HALF_UP
+        )
+        porsi_margin = ((pokok * persen) / Decimal('100.00')).quantize(
+            Decimal('0.01'), rounding=ROUND_HALF_UP
+        )
+        jumlah_reguler = (porsi_pokok_reguler + porsi_margin).quantize(
+            Decimal('0.01'), rounding=ROUND_HALF_UP
+        )
+
+        rincian = []
+        for ke in range(1, tenor + 1):
+            if ke < tenor:
+                pokok_ke = porsi_pokok_reguler
+                jumlah_ke = jumlah_reguler
+            else:
+                pokok_ke = (pokok - (porsi_pokok_reguler * Decimal(tenor - 1))).quantize(
+                    Decimal('0.01'), rounding=ROUND_HALF_UP
+                )
+                jumlah_ke = (pokok_ke + porsi_margin).quantize(
+                    Decimal('0.01'), rounding=ROUND_HALF_UP
+                )
+            rincian.append((pokok_ke, porsi_margin, jumlah_ke))
+        return rincian
+
+    @staticmethod
     def hitungSimulasiMarginFlat(
         harga_pokok: Decimal,
         margin_persen: Decimal,
@@ -521,26 +569,20 @@ class Pembiayaan(models.Model):
         Menghitung simulasi pembiayaan syariah dengan metode margin flat presisi DECIMAL(15,2).
         margin_persen = persen dari pokok PER BULAN (flat). Satuan belum dikonfirmasi mitra (PND-01).
         """
-        # PENDING PND-01: besaran dan satuan margin (per bulan/tahun/total) belum dikonfirmasi.
-        # PENDING PND-02: Hawalah memakai rumus yang sama dengan akad lain (belum dikonfirmasi).
-        # PENDING PND-06: pembulatan 2 desimal ROUND_HALF_UP; aturan pembulatan belum dikonfirmasi.
         pokok = Decimal(str(harga_pokok)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         persen = Decimal(str(margin_persen)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         tenor = int(tenor_bulan)
-        if tenor < 1 or tenor > 72:
-            raise ValidationError('Tenor pembiayaan wajib berada pada rentang 1 s.d. 72 bulan.')
-
-        porsi_pokok = (pokok / Decimal(tenor)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        porsi_margin = ((pokok * persen) / Decimal('100.00')).quantize(
-            Decimal('0.01'), rounding=ROUND_HALF_UP
+        rincian = Pembiayaan.hitungRincianAngsuran(
+            harga_pokok=pokok,
+            margin_persen=persen,
+            tenor_bulan=tenor,
         )
+        porsi_pokok, porsi_margin, angsuran_bulanan = rincian[0]
+        _, _, angsuran_terakhir = rincian[-1]
         total_margin = (porsi_margin * Decimal(tenor)).quantize(
             Decimal('0.01'), rounding=ROUND_HALF_UP
         )
         total_kewajiban = (pokok + total_margin).quantize(
-            Decimal('0.01'), rounding=ROUND_HALF_UP
-        )
-        angsuran_bulanan = (porsi_pokok + porsi_margin).quantize(
             Decimal('0.01'), rounding=ROUND_HALF_UP
         )
         return {
@@ -552,6 +594,7 @@ class Pembiayaan(models.Model):
             'total_margin': total_margin,
             'total_kewajiban': total_kewajiban,
             'angsuran_bulanan': angsuran_bulanan,
+            'angsuran_terakhir': angsuran_terakhir,
         }
 
     @classmethod
@@ -837,20 +880,56 @@ class JadwalAngsuran(models.Model):
         cls,
         pembiayaan_id: int,
         tenor_bulan: int,
-        porsi_pokok: Decimal,
-        porsi_margin: Decimal,
+        porsi_pokok: Decimal = None,
+        porsi_margin: Decimal = None,
         tanggal_mulai: date = None,
+        harga_pokok: Decimal = None,
+        margin_persen: Decimal = None,
     ) -> list:
-        """Meng-generate kartu jadwal angsuran bulanan secara otomatis saat pencairan."""
+        """
+        Meng-generate kartu jadwal angsuran bulanan secara otomatis saat pencairan.
+        Menggunakan fungsi sumber tunggal Pembiayaan.hitungRincianAngsuran agar selisih
+        pembulatan pokok diserap angsuran terakhir (sum(jumlah_angsuran) == total_kewajiban).
+        """
         # PENDING PND-07: angsuran pertama = bulan berikutnya setelah tanggal_mulai, jatuh tempo
         # tanggal 24. Aturan awal angsuran (termasuk cair setelah tanggal 24) belum dikonfirmasi.
         tgl_acuan = tanggal_mulai or date.today()
-        pokok = Decimal(str(porsi_pokok)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        margin = Decimal(str(porsi_margin)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        jumlah = (pokok + margin).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        tenor = int(tenor_bulan)
+
+        pmb = None
+        if harga_pokok is None or margin_persen is None:
+            pmb = Pembiayaan.objects.filter(pk=pembiayaan_id).only(
+                'harga_pokok', 'margin_persen'
+            ).first()
+
+        if harga_pokok is None:
+            if pmb is not None:
+                harga_pokok = pmb.harga_pokok
+            elif porsi_pokok is not None:
+                harga_pokok = (
+                    Decimal(str(porsi_pokok)) * Decimal(tenor)
+                ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            else:
+                raise ValidationError('harga_pokok wajib disediakan untuk generate jadwal angsuran.')
+
+        if margin_persen is None:
+            if pmb is not None:
+                margin_persen = pmb.margin_persen
+            elif porsi_margin is not None and Decimal(str(harga_pokok)) > Decimal('0.00'):
+                margin_persen = (
+                    (Decimal(str(porsi_margin)) * Decimal('100.00')) / Decimal(str(harga_pokok))
+                ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            else:
+                margin_persen = Decimal('0.00')
+
+        rincian = Pembiayaan.hitungRincianAngsuran(
+            harga_pokok=harga_pokok,
+            margin_persen=margin_persen,
+            tenor_bulan=tenor,
+        )
 
         jadwal_items = []
-        for ke in range(1, int(tenor_bulan) + 1):
+        for ke, (pokok_ke, margin_ke, jumlah_ke) in enumerate(rincian, start=1):
             tahun = tgl_acuan.year + ((tgl_acuan.month - 1 + ke) // 12)
             bulan = ((tgl_acuan.month - 1 + ke) % 12) + 1
             jatuh_tempo = date(tahun, bulan, 24)
@@ -859,9 +938,9 @@ class JadwalAngsuran(models.Model):
                     pembiayaan_id=pembiayaan_id,
                     angsuran_ke=ke,
                     jatuh_tempo=jatuh_tempo,
-                    porsi_pokok=pokok,
-                    porsi_margin=margin,
-                    jumlah_angsuran=jumlah,
+                    porsi_pokok=pokok_ke,
+                    porsi_margin=margin_ke,
+                    jumlah_angsuran=jumlah_ke,
                     status_bayar=StatusBayarAngsuranChoices.BELUM_LUNAS,
                 )
             )

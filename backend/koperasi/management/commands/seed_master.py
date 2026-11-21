@@ -249,16 +249,11 @@ class Command(BaseCommand):
                 'bukti_transfer_url': 'media/pencairan/bukti_pmb_001.pdf',
             })
             Pembiayaan.perbaruiStatusPembiayaan(pmb.id, StatusPembiayaanChoices.AKTIF, tanggal_cair=date(2026, 7, 12))
-            simulasi_pmb = Pembiayaan.hitungSimulasiMarginFlat(
-                harga_pokok=pmb.harga_pokok,
-                margin_persen=pmb.margin_persen,
-                tenor_bulan=pmb.tenor_bulan,
-            )
             JadwalAngsuran.generateJadwalAngsuran(
                 pembiayaan_id=pmb.id,
-                tenor_bulan=12,
-                porsi_pokok=simulasi_pmb['porsi_pokok'],
-                porsi_margin=simulasi_pmb['porsi_margin'],
+                tenor_bulan=pmb.tenor_bulan,
+                harga_pokok=pmb.harga_pokok,
+                margin_persen=pmb.margin_persen,
                 tanggal_mulai=date(2026, 7, 12),
             )
             for ke in range(1, 5):

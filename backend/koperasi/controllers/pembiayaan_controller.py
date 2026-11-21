@@ -567,12 +567,6 @@ class PembiayaanController:
         else:
             bukti_url = f"media/pencairan/bukti_{pembiayaan.no_pembiayaan.lower()}.pdf"
 
-        simulasi = Pembiayaan.hitungSimulasiMarginFlat(
-            harga_pokok=pembiayaan.harga_pokok,
-            margin_persen=pembiayaan.margin_persen,
-            tenor_bulan=pembiayaan.tenor_bulan,
-        )
-
         with transaction.atomic():
             realisasi = RealisasiPencairan.simpanRealisasiPencairan(
                 pembiayaan_id=pembiayaan.id,
@@ -597,8 +591,8 @@ class PembiayaanController:
                 JadwalAngsuran.generateJadwalAngsuran(
                     pembiayaan_id=pembiayaan.id,
                     tenor_bulan=pembiayaan.tenor_bulan,
-                    porsi_pokok=simulasi['porsi_pokok'],
-                    porsi_margin=simulasi['porsi_margin'],
+                    harga_pokok=pembiayaan.harga_pokok,
+                    margin_persen=pembiayaan.margin_persen,
                     tanggal_mulai=tgl_realisasi,
                 )
 
@@ -736,11 +730,12 @@ def _rakit_baris_pembiayaan(qs_pembiayaan):
         if pmb.status == StatusPembiayaanChoices.LUNAS:
             persen_progress = 100
 
-        porsi_margin_bulanan = (
-            (pmb.total_margin / Decimal(total_tenor)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-            if total_tenor > 0
-            else Decimal('0.00')
+        rincian_angsuran = Pembiayaan.hitungRincianAngsuran(
+            harga_pokok=pmb.harga_pokok,
+            margin_persen=pmb.margin_persen,
+            tenor_bulan=total_tenor,
         )
+        porsi_margin_bulanan = rincian_angsuran[0][1]
         agunan_utama = pmb.agunan_list.first()
         verifikasi_bendahara_log = pmb.persetujuan_list.filter(level_persetujuan=1).first()
         persetujuan_ketua_log = pmb.persetujuan_list.filter(level_persetujuan=2).first()
@@ -1074,15 +1069,20 @@ def detail_pembiayaan_view(request, pembiayaan_id: int):
         # PENDING PND-07: pratinjau memakai aturan awal angsuran sementara (bulan berikutnya, tgl 24).
         pratinjau_list = []
         tgl_acuan = pembiayaan.tanggal_pengajuan or date.today()
-        for ke in range(1, pembiayaan.tenor_bulan + 1):
+        rincian_pratinjau = Pembiayaan.hitungRincianAngsuran(
+            harga_pokok=pembiayaan.harga_pokok,
+            margin_persen=pembiayaan.margin_persen,
+            tenor_bulan=pembiayaan.tenor_bulan,
+        )
+        for ke, (pokok_ke, margin_ke, jumlah_ke) in enumerate(rincian_pratinjau, start=1):
             tahun = tgl_acuan.year + ((tgl_acuan.month - 1 + ke) // 12)
             bulan = ((tgl_acuan.month - 1 + ke) % 12) + 1
             pratinjau_list.append({
                 'angsuran_ke': ke,
                 'jatuh_tempo': date(tahun, bulan, 24),
-                'porsi_pokok': simulasi['porsi_pokok'],
-                'porsi_margin': simulasi['porsi_margin'],
-                'jumlah_angsuran': simulasi['angsuran_bulanan'],
+                'porsi_pokok': pokok_ke,
+                'porsi_margin': margin_ke,
+                'jumlah_angsuran': jumlah_ke,
                 'status_bayar': 'PRATINJAU',
                 'get_status_bayar_display': 'Pratinjau (Menunggu Cair)',
             })

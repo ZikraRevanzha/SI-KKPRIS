@@ -955,6 +955,110 @@ class SIKKPRISModelsTestCase(TestCase):
             with self.assertRaises(CommandError):
                 call_command('seed_master', verbosity=0)
 
+    def test_13_invarian_pembulatan_angsuran_terakhir(self):
+        """
+        Memastikan angsuran terakhir menyerap sisa pembulatan pokok sehingga
+        sum(porsi_pokok) == harga_pokok dan sum(jumlah_angsuran) == total_kewajiban.
+        """
+        akad_mrb = JenisAkad.objects.get(kode='AKD-MRB')
+
+        kasus = [
+            # (kode, pokok, margin_persen, tenor, reg_angsuran, akhir_angsuran, total_kewajiban)
+            (
+                'PMB-INV-A',
+                Decimal('10000000.00'),
+                Decimal('1.00'),
+                7,
+                Decimal('1528571.43'),
+                Decimal('1528571.42'),
+                Decimal('10700000.00'),
+            ),
+            (
+                'PMB-INV-B',
+                Decimal('70000000.00'),
+                Decimal('1.00'),
+                72,
+                Decimal('1672222.22'),
+                Decimal('1672222.38'),
+                Decimal('120400000.00'),
+            ),
+            (
+                'PMB-INV-C',
+                Decimal('25000000.00'),
+                Decimal('1.00'),
+                11,
+                None,
+                None,
+                Decimal('27750000.00'),
+            ),
+            (
+                'PMB-INV-D',
+                Decimal('5000000.00'),
+                Decimal('0.00'),
+                10,
+                Decimal('500000.00'),
+                Decimal('500000.00'),
+                Decimal('5000000.00'),
+            ),
+        ]
+
+        for idx, (kode, pokok, margin, tenor, reg_exp, akhir_exp, total_exp) in enumerate(kasus, start=1):
+            rincian = Pembiayaan.hitungRincianAngsuran(pokok, margin, tenor)
+            self.assertEqual(len(rincian), tenor)
+            self.assertEqual(sum(r[0] for r in rincian), pokok)
+            self.assertEqual(sum(r[2] for r in rincian), total_exp)
+            if reg_exp is not None:
+                for pokok_ke, _, jumlah_ke in rincian[:-1]:
+                    self.assertEqual(jumlah_ke, reg_exp)
+            if akhir_exp is not None:
+                self.assertEqual(rincian[-1][2], akhir_exp)
+
+            # Verifikasi pada JadwalAngsuran yang tersimpan di basis data
+            pmb = Pembiayaan.simpanPengajuanBaru({
+                'no_pembiayaan': kode,
+                'anggota_id': self.anggota.id,
+                'jenis_akad_id': akad_mrb.id,
+                'tanggal_pengajuan': date(2026, 11, 10),
+                'harga_pokok': pokok,
+                'margin_persen': margin,
+                'tenor_bulan': tenor,
+                'no_antrean': idx,
+                'tujuan_pembiayaan': f'Uji Invarian {kode}',
+            })
+            self.assertEqual(pmb.total_kewajiban, total_exp)
+
+            jadwal = JadwalAngsuran.generateJadwalAngsuran(
+                pembiayaan_id=pmb.id,
+                tenor_bulan=pmb.tenor_bulan,
+                harga_pokok=pmb.harga_pokok,
+                margin_persen=pmb.margin_persen,
+                tanggal_mulai=date(2026, 11, 12),
+            )
+            self.assertEqual(len(jadwal), tenor)
+            self.assertEqual(sum(j.porsi_pokok for j in jadwal), pokok)
+            self.assertEqual(sum(j.jumlah_angsuran for j in jadwal), pmb.total_kewajiban)
+            if akhir_exp is not None:
+                self.assertEqual(jadwal[-1].jumlah_angsuran, akhir_exp)
+
+        # Verifikasi pratinjau jadwal di detail_pembiayaan_view (belum cair) memakai fungsi sumber tunggal
+        pmb_pratinjau = Pembiayaan.simpanPengajuanBaru({
+            'no_pembiayaan': 'PMB-INV-PRATINJAU',
+            'anggota_id': self.anggota.id,
+            'jenis_akad_id': akad_mrb.id,
+            'tanggal_pengajuan': date(2026, 11, 10),
+            'harga_pokok': Decimal('10000000.00'),
+            'margin_persen': Decimal('1.00'),
+            'tenor_bulan': 7,
+            'no_antrean': 99,
+            'tujuan_pembiayaan': 'Uji Pratinjau Pembulatan',
+        })
+        self.client.post('/login/', {'username': 'bendahara01', 'password': self.TEST_SEED_PASSWORD})
+        resp_p2 = self.client.get(f'/pembiayaan/{pmb_pratinjau.id}/?page=2')
+        self.assertEqual(resp_p2.status_code, 200)
+        baris_akhir = resp_p2.context['page_obj'].object_list[-1]
+        self.assertEqual(baris_akhir['angsuran_ke'], 7)
+        self.assertEqual(baris_akhir['jumlah_angsuran'], Decimal('1528571.42'))
+
 
 
 
