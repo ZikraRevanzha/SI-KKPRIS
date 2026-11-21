@@ -5,6 +5,36 @@ info:
   description: REST API Sistem Informasi Pembiayaan dan Koperasi Syariah (SI-KKPRIS)
     — Koperasi KKPRIS SMK Negeri 1 Kota Solok.
 paths:
+  /api/v1/anggota/saya/ringkasan/:
+    get:
+      operationId: anggota_saya_ringkasan
+      description: Mengembalikan 5 saldo simpanan anggota, status pembiayaan terakhir
+        beserta progres angsuran, dan maksimal 6 riwayat transaksi terakhir milik
+        anggota yang sedang login. Seluruh nilai uang berupa string desimal.
+      summary: Ambil ringkasan beranda anggota aktif
+      tags:
+      - Dashboard
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BerandaAnggotaRingkasan'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Token tidak ada atau tidak valid.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Hanya Anggota yang diizinkan.
   /api/v1/auth/ganti-password/:
     post:
       operationId: auth_ganti_password
@@ -154,8 +184,196 @@ paths:
               schema:
                 $ref: '#/components/schemas/GalatSeragam'
           description: Refresh token tidak ada, kedaluwarsa, atau diblacklist.
+  /api/v1/dashboard/ringkasan/:
+    get:
+      operationId: dashboard_ringkasan
+      description: Mengembalikan 4 kartu statistik utama, tren 5 skema simpanan, distribusi
+        3 akad syariah, dan 6 aktivitas audit trail terbaru untuk Bendahara dan Ketua
+        Koperasi. Seluruh nilai uang berupa string desimal.
+      summary: Ambil ringkasan dashboard pengurus
+      tags:
+      - Dashboard
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardRingkasan'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Token tidak ada atau tidak valid.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Hanya Bendahara atau Ketua yang diizinkan.
 components:
   schemas:
+    AktivitasTerbaruItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        aksi:
+          type: string
+          readOnly: true
+        nama_tabel:
+          type: string
+          readOnly: true
+        detail_perubahan:
+          type: string
+          readOnly: true
+        ip_address:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        pengguna_nama:
+          type: string
+          readOnly: true
+        pengguna_peran:
+          type: string
+          readOnly: true
+      required:
+      - aksi
+      - created_at
+      - detail_perubahan
+      - id
+      - ip_address
+      - nama_tabel
+      - pengguna_nama
+      - pengguna_peran
+    BerandaAnggotaRingkasan:
+      type: object
+      properties:
+        anggota:
+          allOf:
+          - $ref: '#/components/schemas/ProfilAnggotaRingkas'
+          readOnly: true
+          nullable: true
+        total_simpanan_anggota:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+        kartu_simpanan:
+          type: array
+          items:
+            $ref: '#/components/schemas/KartuSimpananAnggotaItem'
+          readOnly: true
+        pembiayaan_aktif:
+          allOf:
+          - $ref: '#/components/schemas/StatusPembiayaanAnggota'
+          readOnly: true
+          nullable: true
+        riwayat_terakhir:
+          type: array
+          items:
+            $ref: '#/components/schemas/RiwayatTerakhirAnggotaItem'
+          readOnly: true
+      required:
+      - anggota
+      - kartu_simpanan
+      - pembiayaan_aktif
+      - riwayat_terakhir
+      - total_simpanan_anggota
+    DashboardRingkasan:
+      type: object
+      properties:
+        hari_ini:
+          type: string
+          format: date
+          readOnly: true
+        total_anggota_aktif:
+          type: integer
+          readOnly: true
+        total_seluruh_anggota:
+          type: integer
+          readOnly: true
+        total_simpanan:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+        jumlah_pembiayaan_aktif:
+          type: integer
+          readOnly: true
+        sisa_tagihan_aktif:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+        menunggu_approval_ketua:
+          type: integer
+          readOnly: true
+        kas_hari_ini:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+        distribusi_akad:
+          type: array
+          items:
+            $ref: '#/components/schemas/DistribusiAkadItem'
+          readOnly: true
+        rincian_jenis_simpanan:
+          type: array
+          items:
+            $ref: '#/components/schemas/RincianJenisSimpananItem'
+          readOnly: true
+        aktivitas_terbaru:
+          type: array
+          items:
+            $ref: '#/components/schemas/AktivitasTerbaruItem'
+          readOnly: true
+      required:
+      - aktivitas_terbaru
+      - distribusi_akad
+      - hari_ini
+      - jumlah_pembiayaan_aktif
+      - kas_hari_ini
+      - menunggu_approval_ketua
+      - rincian_jenis_simpanan
+      - sisa_tagihan_aktif
+      - total_anggota_aktif
+      - total_seluruh_anggota
+      - total_simpanan
+    DistribusiAkadItem:
+      type: object
+      properties:
+        kode:
+          type: string
+          readOnly: true
+        label:
+          type: string
+          readOnly: true
+        jumlah:
+          type: integer
+          readOnly: true
+        nominal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+        persen:
+          type: integer
+          readOnly: true
+      required:
+      - jumlah
+      - kode
+      - label
+      - nominal
+      - persen
     GalatSeragam:
       type: object
       properties:
@@ -196,6 +414,32 @@ components:
       - konfirmasi_password
       - password_baru
       - password_lama
+    KartuSimpananAnggotaItem:
+      type: object
+      properties:
+        kode:
+          type: string
+          readOnly: true
+        nama:
+          type: string
+          readOnly: true
+        nama_lengkap:
+          type: string
+          readOnly: true
+        saldo:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+        dapat_ditarik:
+          type: boolean
+          readOnly: true
+      required:
+      - dapat_ditarik
+      - kode
+      - nama
+      - nama_lengkap
+      - saldo
     LoginInputRequest:
       type: object
       properties:
@@ -310,6 +554,64 @@ components:
           description: Access token JWT baru hasil penyegaran sesi.
       required:
       - access
+    RincianJenisSimpananItem:
+      type: object
+      properties:
+        kode:
+          type: string
+          readOnly: true
+        nama:
+          type: string
+          readOnly: true
+        saldo:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+        dapat_ditarik:
+          type: boolean
+          readOnly: true
+        tinggi_persen:
+          type: integer
+          readOnly: true
+      required:
+      - dapat_ditarik
+      - kode
+      - nama
+      - saldo
+      - tinggi_persen
+    RiwayatTerakhirAnggotaItem:
+      type: object
+      properties:
+        tanggal:
+          type: string
+          format: date-time
+          readOnly: true
+        jenis:
+          type: string
+          readOnly: true
+        keterangan:
+          type: string
+          readOnly: true
+        jumlah:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        tipe_badge:
+          allOf:
+          - $ref: '#/components/schemas/TipeBadgeEnum'
+          readOnly: true
+      required:
+      - jenis
+      - jumlah
+      - keterangan
+      - status
+      - tanggal
+      - tipe_badge
     StatusEnum:
       enum:
       - AKTIF
@@ -334,6 +636,70 @@ components:
         * `HONORER` - Honorer
         * `PENSIUNAN` - Pensiunan
         * `PINDAH_TUGAS` - Pindah Tugas
+    StatusPembiayaanAnggota:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        no_pembiayaan:
+          type: string
+          readOnly: true
+        jenis_akad_kode:
+          type: string
+          readOnly: true
+        jenis_akad_label:
+          type: string
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        status_label:
+          type: string
+          readOnly: true
+        no_antrean:
+          type: integer
+          readOnly: true
+        angsuran_bulanan:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+        sisa_kewajiban:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+        angsuran_lunas_count:
+          type: integer
+          readOnly: true
+        total_tenor:
+          type: integer
+          readOnly: true
+        progress_persen:
+          type: integer
+          readOnly: true
+      required:
+      - angsuran_bulanan
+      - angsuran_lunas_count
+      - id
+      - jenis_akad_kode
+      - jenis_akad_label
+      - no_antrean
+      - no_pembiayaan
+      - progress_persen
+      - sisa_kewajiban
+      - status
+      - status_label
+      - total_tenor
+    TipeBadgeEnum:
+      enum:
+      - success
+      - warning
+      type: string
+      description: |-
+        * `success` - success
+        * `warning` - warning
   securitySchemes:
     jwtAuth:
       type: http

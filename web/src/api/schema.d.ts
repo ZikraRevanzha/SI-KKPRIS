@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/v1/anggota/saya/ringkasan/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ambil ringkasan beranda anggota aktif
+         * @description Mengembalikan 5 saldo simpanan anggota, status pembiayaan terakhir beserta progres angsuran, dan maksimal 6 riwayat transaksi terakhir milik anggota yang sedang login. Seluruh nilai uang berupa string desimal.
+         */
+        get: operations["anggota_saya_ringkasan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/ganti-password/": {
         parameters: {
             query?: never;
@@ -104,10 +124,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/ringkasan/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ambil ringkasan dashboard pengurus
+         * @description Mengembalikan 4 kartu statistik utama, tren 5 skema simpanan, distribusi 3 akad syariah, dan 6 aktivitas audit trail terbaru untuk Bendahara dan Ketua Koperasi. Seluruh nilai uang berupa string desimal.
+         */
+        get: operations["dashboard_ringkasan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AktivitasTerbaruItem: {
+            readonly id: number;
+            readonly aksi: string;
+            readonly nama_tabel: string;
+            readonly detail_perubahan: string;
+            readonly ip_address: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly pengguna_nama: string;
+            readonly pengguna_peran: string;
+        };
+        BerandaAnggotaRingkasan: {
+            readonly anggota: components["schemas"]["ProfilAnggotaRingkas"] | null;
+            /** Format: decimal */
+            readonly total_simpanan_anggota: string;
+            readonly kartu_simpanan: components["schemas"]["KartuSimpananAnggotaItem"][];
+            readonly pembiayaan_aktif: components["schemas"]["StatusPembiayaanAnggota"] | null;
+            readonly riwayat_terakhir: components["schemas"]["RiwayatTerakhirAnggotaItem"][];
+        };
+        DashboardRingkasan: {
+            /** Format: date */
+            readonly hari_ini: string;
+            readonly total_anggota_aktif: number;
+            readonly total_seluruh_anggota: number;
+            /** Format: decimal */
+            readonly total_simpanan: string;
+            readonly jumlah_pembiayaan_aktif: number;
+            /** Format: decimal */
+            readonly sisa_tagihan_aktif: string;
+            readonly menunggu_approval_ketua: number;
+            /** Format: decimal */
+            readonly kas_hari_ini: string;
+            readonly distribusi_akad: components["schemas"]["DistribusiAkadItem"][];
+            readonly rincian_jenis_simpanan: components["schemas"]["RincianJenisSimpananItem"][];
+            readonly aktivitas_terbaru: components["schemas"]["AktivitasTerbaruItem"][];
+        };
+        DistribusiAkadItem: {
+            readonly kode: string;
+            readonly label: string;
+            readonly jumlah: number;
+            /** Format: decimal */
+            readonly nominal: string;
+            readonly persen: number;
+        };
         GalatSeragam: {
             /** @description Kode galat terstandar. */
             kode: string;
@@ -122,6 +206,14 @@ export interface components {
             password_lama: string;
             password_baru: string;
             konfirmasi_password: string;
+        };
+        KartuSimpananAnggotaItem: {
+            readonly kode: string;
+            readonly nama: string;
+            readonly nama_lengkap: string;
+            /** Format: decimal */
+            readonly saldo: string;
+            readonly dapat_ditarik: boolean;
         };
         LoginInputRequest: {
             /** @description Username pengguna atau Nomor Anggota (contoh: bendahara01 atau KKP-2026-001). */
@@ -164,6 +256,24 @@ export interface components {
             /** @description Access token JWT baru hasil penyegaran sesi. */
             access: string;
         };
+        RincianJenisSimpananItem: {
+            readonly kode: string;
+            readonly nama: string;
+            /** Format: decimal */
+            readonly saldo: string;
+            readonly dapat_ditarik: boolean;
+            readonly tinggi_persen: number;
+        };
+        RiwayatTerakhirAnggotaItem: {
+            /** Format: date-time */
+            readonly tanggal: string;
+            readonly jenis: string;
+            readonly keterangan: string;
+            /** Format: decimal */
+            readonly jumlah: string;
+            readonly status: string;
+            readonly tipe_badge: components["schemas"]["TipeBadgeEnum"];
+        };
         /**
          * @description * `AKTIF` - Aktif
          *     * `PROSES_RESIGN` - Proses Resign
@@ -180,6 +290,28 @@ export interface components {
          * @enum {string}
          */
         StatusKepegawaianEnum: "PNS" | "PPPK" | "HONORER" | "PENSIUNAN" | "PINDAH_TUGAS";
+        StatusPembiayaanAnggota: {
+            readonly id: number;
+            readonly no_pembiayaan: string;
+            readonly jenis_akad_kode: string;
+            readonly jenis_akad_label: string;
+            readonly status: string;
+            readonly status_label: string;
+            readonly no_antrean: number;
+            /** Format: decimal */
+            readonly angsuran_bulanan: string;
+            /** Format: decimal */
+            readonly sisa_kewajiban: string;
+            readonly angsuran_lunas_count: number;
+            readonly total_tenor: number;
+            readonly progress_persen: number;
+        };
+        /**
+         * @description * `success` - success
+         *     * `warning` - warning
+         * @enum {string}
+         */
+        TipeBadgeEnum: "success" | "warning";
     };
     responses: never;
     parameters: never;
@@ -189,6 +321,43 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    anggota_saya_ringkasan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BerandaAnggotaRingkasan"];
+                };
+            };
+            /** @description Token tidak ada atau tidak valid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GalatSeragam"];
+                };
+            };
+            /** @description Hanya Anggota yang diizinkan. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GalatSeragam"];
+                };
+            };
+        };
+    };
     auth_ganti_password: {
         parameters: {
             query?: never;
@@ -350,6 +519,43 @@ export interface operations {
             };
             /** @description Refresh token tidak ada, kedaluwarsa, atau diblacklist. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GalatSeragam"];
+                };
+            };
+        };
+    };
+    dashboard_ringkasan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardRingkasan"];
+                };
+            };
+            /** @description Token tidak ada atau tidak valid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GalatSeragam"];
+                };
+            };
+            /** @description Hanya Bendahara atau Ketua yang diizinkan. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
