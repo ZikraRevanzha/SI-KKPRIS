@@ -1,0 +1,64 @@
+{% load kkpris_tags %}
+<table class="header-table">
+    <tr>
+        <td style="width: 62%; vertical-align: middle;">
+            <div class="receipt-title">KOPERASI SYARIAH KKPRIS SMKN 1 KOTA SOLOK</div>
+            <div class="receipt-sub">BUKTI PEMBAYARAN ANGSURAN PEMBIAYAAN SYARIAH RESMI</div>
+        </td>
+        <td style="width: 38%; text-align: right; vertical-align: middle;">
+            <div class="doc-number">{{ pembayaran.no_kuitansi }}</div>
+            <div class="receipt-sub">{{ pembayaran.tanggal_bayar|date:"d F Y H:i" }} WIB</div>
+        </td>
+    </tr>
+</table>
+
+<table class="kv-table">
+    <tr>
+        <td class="kv-label">Nama Anggota / No. Anggota</td>
+        <td class="kv-value"><strong>{{ pembayaran.jadwal_angsuran.pembiayaan.anggota.nama }} ({{ pembayaran.jadwal_angsuran.pembiayaan.anggota.no_anggota }})</strong></td>
+    </tr>
+    <tr>
+        <td class="kv-label">Nomor Kontrak &amp; Skema Akad</td>
+        <td class="kv-value"><strong>{{ pembayaran.jadwal_angsuran.pembiayaan.no_pembiayaan }} — {{ pembayaran.jadwal_angsuran.pembiayaan.jenis_akad.get_nama_display }}</strong></td>
+    </tr>
+    <tr>
+        <td class="kv-label">Angsuran Ke / Tenor</td>
+        <td class="kv-value"><strong>Bulan ke-{{ pembayaran.jadwal_angsuran.angsuran_ke }} dari {{ pembayaran.jadwal_angsuran.pembiayaan.tenor_bulan }} Bulan</strong></td>
+    </tr>
+    <tr>
+        <td class="kv-label">Rincian Pokok &amp; Margin</td>
+        <td class="kv-value">Pokok: {{ pembayaran.jadwal_angsuran.porsi_pokok|rupiah }} | Margin/Ujrah: {{ pembayaran.jadwal_angsuran.porsi_margin|rupiah }}</td>
+    </tr>
+    <tr>
+        <td class="kv-label">Metode Pembayaran</td>
+        <td class="kv-value">{{ pembayaran.get_metode_bayar_display }} {% if pembayaran.nomor_referensi %}({{ pembayaran.nomor_referensi }}){% endif %}</td>
+    </tr>
+    {% if pembayaran.potongan_margin > 0 %}
+    <tr>
+        <td class="kv-label">Potongan Margin (Muqashah)</td>
+        <td class="kv-value">{{ pembayaran.potongan_margin|rupiah }}</td>
+    </tr>
+    {% endif %}
+</table>
+
+<table class="amount-banner-table">
+    <tr>
+        <td class="amount-label">JUMLAH PEMBAYARAN DITERIMA</td>
+        <td class="amount-value">{{ pembayaran.nominal_bayar|rupiah:True }}</td>
+    </tr>
+</table>
+
+<table class="sign-table">
+    <tr>
+        <td style="width: 50%; text-align: center; vertical-align: top;">
+            <div>Penyetor / Anggota,</div>
+            <div class="sign-space"></div>
+            <div><strong>({{ pembayaran.jadwal_angsuran.pembiayaan.anggota.nama }})</strong></div>
+        </td>
+        <td style="width: 50%; text-align: center; vertical-align: top;">
+            <div>Kota Solok, {{ pembayaran.tanggal_bayar|date:"d F Y" }}<br>Bendahara Koperasi KKPRIS,</div>
+            <div class="sign-space-sm"></div>
+            <div><strong>({{ pembayaran.bendahara.nama_lengkap }})</strong></div>
+        </td>
+    </tr>
+</table>

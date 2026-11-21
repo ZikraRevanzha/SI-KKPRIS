@@ -1256,6 +1256,26 @@ class SIKKPRISModelsTestCase(TestCase):
             )
         self.assertEqual(PembayaranAngsuran.objects.filter(jadwal_angsuran=jadwal_1).count(), 1)
 
+    def test_17_kuitansi_pdf_terpisah_dari_template_layar(self):
+        """Memastikan PDF kuitansi simpanan & angsuran memuat nomor kuitansi tanpa tombol Cetak/Unduh."""
+        from io import BytesIO
+        from pypdf import PdfReader
+
+        call_command('seed_master', '--with-demo', verbosity=0)
+        self.client.post('/login/', {'username': 'bendahara01', 'password': self.TEST_SEED_PASSWORD})
+
+        for no_kuitansi in ('KUI-DEMO-001', 'KUI-ANG-2026-001'):
+            with self.subTest(no_kuitansi=no_kuitansi):
+                resp = self.client.get(f'/kuitansi/{no_kuitansi}/pdf/')
+                self.assertEqual(resp.status_code, 200)
+                self.assertEqual(resp['Content-Type'], 'application/pdf')
+
+                reader = PdfReader(BytesIO(resp.content))
+                teks_pdf = '\n'.join(page.extract_text() or '' for page in reader.pages)
+                self.assertIn(no_kuitansi, teks_pdf)
+                self.assertNotIn('Cetak', teks_pdf)
+                self.assertNotIn('Unduh', teks_pdf)
+
 
 
 

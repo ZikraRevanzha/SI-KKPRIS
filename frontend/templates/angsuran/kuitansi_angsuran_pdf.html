@@ -1,0 +1,83 @@
+{% load kkpris_tags %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Kuitansi Pembayaran Angsuran {{ pembayaran.no_kuitansi }} — SI-KKPRIS</title>
+    <style>
+        @page { size: A4 portrait; margin: 1.5cm; }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            color: #0f172a;
+        }
+        .receipt-box {
+            border: 2px solid #0f766e;
+            padding: 20px 24px;
+        }
+        .header-table {
+            width: 100%;
+            border-bottom: 2px solid #0f766e;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+        .receipt-title {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #0f766e;
+        }
+        .receipt-sub {
+            font-size: 8.5pt;
+            color: #475569;
+        }
+        .doc-number {
+            font-weight: bold;
+            font-size: 10.5pt;
+        }
+        .kv-table {
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .kv-table td {
+            padding: 6px 4px;
+            border-bottom: 1px dashed #cbd5e1;
+            font-size: 9.5pt;
+        }
+        .kv-label {
+            width: 38%;
+            color: #475569;
+        }
+        .amount-banner-table {
+            width: 100%;
+            background-color: #f0fdfa;
+            border: 1.5px solid #0f766e;
+            margin-bottom: 20px;
+        }
+        .amount-banner-table td {
+            padding: 10px 14px;
+            font-size: 11pt;
+            font-weight: bold;
+            color: #115e59;
+        }
+        .amount-value {
+            text-align: right;
+        }
+        .sign-table {
+            width: 100%;
+            margin-top: 20px;
+            font-size: 9.5pt;
+        }
+        .sign-space {
+            height: 52px;
+        }
+        .sign-space-sm {
+            height: 38px;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-box">
+        {% include "angsuran/_kuitansi_isi.html" %}
+    </div>
+</body>
+</html>

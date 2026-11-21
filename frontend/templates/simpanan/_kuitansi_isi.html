@@ -1,0 +1,69 @@
+{% load kkpris_tags %}
+<table class="header-table">
+    <tr>
+        <td style="width: 60%; vertical-align: middle;">
+            <div class="receipt-title">KOPERASI SYARIAH KKPRIS</div>
+            <div class="receipt-sub">SMK Negeri 1 Kota Solok — Sumatera Barat</div>
+        </td>
+        <td style="width: 40%; text-align: right; vertical-align: middle;">
+            <div class="doc-label">Bukti Transaksi Simpanan</div>
+            <div class="doc-number">No: {{ mutasi.no_kuitansi }}</div>
+        </td>
+    </tr>
+</table>
+
+<table class="kv-table">
+    <tr>
+        <td class="kv-label">Tanggal &amp; Waktu Transaksi</td>
+        <td class="kv-value"><strong>{{ mutasi.tanggal_transaksi|date:"d F Y, H:i" }} WIB</strong></td>
+    </tr>
+    <tr>
+        <td class="kv-label">Nomor Anggota / Nama</td>
+        <td class="kv-value"><strong>{{ mutasi.anggota.no_anggota }} — {{ mutasi.anggota.nama }}</strong></td>
+    </tr>
+    <tr>
+        <td class="kv-label">Kategori Skema Simpanan</td>
+        <td class="kv-value"><strong>{{ mutasi.jenis_simpanan.nama }} ({{ mutasi.jenis_simpanan.kode }})</strong></td>
+    </tr>
+    <tr>
+        <td class="kv-label">Jenis Transaksi / Metode</td>
+        <td class="kv-value"><strong>{{ mutasi.get_jenis_transaksi_display }} ({{ mutasi.get_metode_bayar_display }})</strong></td>
+    </tr>
+    <tr>
+        <td class="kv-label">Saldo Sebelum Transaksi</td>
+        <td class="kv-value"><strong>{{ saldo_sebelum|rupiah }}</strong></td>
+    </tr>
+    <tr>
+        <td class="kv-label">Nominal {{ mutasi.get_jenis_transaksi_display }}</td>
+        <td class="kv-value"><strong style="color: #115e59;">{{ mutasi.nominal|rupiah }}</strong></td>
+    </tr>
+    <tr>
+        <td class="kv-label">Saldo Akhir ({{ mutasi.jenis_simpanan.nama }})</td>
+        <td class="kv-value"><strong>{{ mutasi.saldo_sesudah|rupiah }}</strong></td>
+    </tr>
+    <tr>
+        <td class="kv-label">Keterangan</td>
+        <td class="kv-value"><strong>{{ mutasi.keterangan|default:"-" }}</strong></td>
+    </tr>
+</table>
+
+<div class="amount-banner">
+    TOTAL NOMINAL {{ mutasi.get_jenis_transaksi_display|upper }}: {{ mutasi.nominal|rupiah:True }}
+</div>
+
+<table class="sign-table">
+    <tr>
+        <td style="width: 50%; text-align: center; vertical-align: top;">
+            <div>Anggota Penyetor / Penerima,</div>
+            <div class="sign-space"></div>
+            <div class="sign-name">{{ mutasi.anggota.nama }}</div>
+            <div class="sign-role">{{ mutasi.anggota.no_anggota }}</div>
+        </td>
+        <td style="width: 50%; text-align: center; vertical-align: top;">
+            <div>Kota Solok, {{ mutasi.tanggal_transaksi|date:"d F Y" }}<br>Bendahara Koperasi KKPRIS,</div>
+            <div class="sign-space-sm"></div>
+            <div class="sign-name">{{ mutasi.bendahara.nama_lengkap }}</div>
+            <div class="sign-role">Bendahara Koperasi</div>
+        </td>
+    </tr>
+</table>

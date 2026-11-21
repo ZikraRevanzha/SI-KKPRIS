@@ -587,7 +587,7 @@ class LaporanBuktiController:
                 if format_output == 'pdf':
                     return LaporanKeuangan.generatePdfKuitansi({
                         'no_kuitansi': mutasi.no_kuitansi,
-                        'template_name': 'simpanan/kuitansi_simpanan_print.html',
+                        'template_name': 'simpanan/kuitansi_simpanan_pdf.html',
                         'context': ctx,
                     })
 
@@ -598,7 +598,7 @@ class LaporanBuktiController:
                 if format_output == 'pdf':
                     return LaporanKeuangan.generatePdfKuitansi({
                         'no_kuitansi': pembayaran.no_kuitansi,
-                        'template_name': 'angsuran/kuitansi_angsuran_print.html',
+                        'template_name': 'angsuran/kuitansi_angsuran_pdf.html',
                         'context': ctx,
                     })
 
