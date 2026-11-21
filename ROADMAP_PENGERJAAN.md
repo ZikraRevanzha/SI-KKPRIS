@@ -16,15 +16,15 @@ Dokumen ini memberi tahu **prompt mana yang dipakai di langkah mana**, apa yang 
 
 ## Langkah 0 — Persiapan (kamu sendiri, tanpa agent)
 
-- [ ] Letakkan `AGENTS.md` (v2) dan `PENDING_KONFIRMASI.md` di root repository; salin `ROADMAP_PENGERJAAN.md`, `prompt_antigravity.md`, `prompt_antigravity_v2.md` ke folder `docs/`.
-- [ ] Buat folder `docs/wireframe/` dan salin 22 PNG wireframe final ke sana (agent tidak dapat membaca folder di luar repository).
-- [ ] Pindahkan virtualenv ke `backend/.venv` (bagian "Virtualenv" di bawah) dan pastikan `.gitignore` sudah ada sebelum `git add` apa pun.
-- [ ] Buat/lengkapi `.gitignore` sesuai `AGENTS.md` Bagian 3.
-- [ ] Pasang Node.js LTS terbaru (`node -v` dan `npm -v` harus jalan).
-- [ ] Pasang skill (lihat bagian "Skill" di bawah).
+- [x] Letakkan `AGENTS.md` (v2) dan `PENDING_KONFIRMASI.md` di root repository; salin `ROADMAP_PENGERJAAN.md`, `prompt_antigravity.md`, `prompt_antigravity_v2.md` ke folder `docs/`. _(Catatan: prompt ada di `docs/`; roadmap tetap di root sesuai `AGENTS.md`.)_
+- [x] Buat folder `docs/wireframe/` dan salin 22 PNG wireframe final ke sana (agent tidak dapat membaca folder di luar repository).
+- [x] Pindahkan virtualenv ke `backend/.venv` (bagian "Virtualenv" di bawah) dan pastikan `.gitignore` sudah ada sebelum `git add` apa pun.
+- [x] Buat/lengkapi `.gitignore` sesuai `AGENTS.md` Bagian 3.
+- [x] Pasang Node.js LTS terbaru (`node -v` dan `npm -v` harus jalan).
+- [x] Pasang skill (lihat bagian "Skill" di bawah).
 - [ ] Kirim pertanyaan PND-01 sampai PND-04 ke Bu Eni, dan PND-12 ke pembimbing. **Tidak memblokir** pengerjaan.
-- [ ] Beri tag titik kembali: `git tag mvt-final` lalu `git push origin mvt-final`.
-- [ ] Pastikan MySQL (Laragon) berjalan dan `python manage.py test koperasi` lulus di laptopmu sebelum mulai.
+- [x] Beri tag titik kembali: `git tag mvt-final` lalu `git push origin mvt-final`.
+- [x] Pastikan MySQL (Laragon) berjalan dan `python manage.py test koperasi` lulus di laptopmu sebelum mulai.
 
 ---
 
