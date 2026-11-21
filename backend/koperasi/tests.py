@@ -1170,6 +1170,92 @@ class SIKKPRISModelsTestCase(TestCase):
         self.assertIsInstance(cell_rat_val.value, (int, float))
         self.assertEqual(cell_rat_val.number_format, '#,##0.00')
 
+    def test_16_kunci_baris_tolak_pembayaran_dan_aksi_ganda(self):
+        """Memastikan pembayaran angsuran, persetujuan kas, dan realisasi ganda ditolak di dalam kunci."""
+        from koperasi.controllers.pembiayaan_controller import PembiayaanController
+
+        akad_mrb = JenisAkad.objects.get(kode='AKD-MRB')
+        pmb = Pembiayaan.simpanPengajuanBaru({
+            'no_pembiayaan': 'PMB-LOCK-001',
+            'anggota_id': self.anggota.id,
+            'jenis_akad_id': akad_mrb.id,
+            'tanggal_pengajuan': date(2026, 11, 10),
+            'harga_pokok': Decimal('6000000.00'),
+            'margin_persen': Decimal('1.00'),
+            'tenor_bulan': 6,
+            'no_antrean': 1,
+            'tujuan_pembiayaan': 'Uji Kunci Baris Aksi Ganda',
+        })
+
+        # 1. Persetujuan kas Ketua: pertama sukses, kedua ditolak
+        PembiayaanController.setujuiPengeluaranKas(
+            pembiayaan_id=pmb.id,
+            pejabat=self.ketua,
+            keputusan=KeputusanOtorisasiChoices.DISETUJUI,
+        )
+        with self.assertRaises(ValidationError):
+            PembiayaanController.setujuiPengeluaranKas(
+                pembiayaan_id=pmb.id,
+                pejabat=self.ketua,
+                keputusan=KeputusanOtorisasiChoices.DISETUJUI,
+            )
+
+        # 2. Realisasi pencairan: pertama sukses, kedua ditolak
+        PembiayaanController.catatRealisasiPencairan(
+            pembiayaan_id=pmb.id,
+            bendahara=self.bendahara,
+            data_realisasi={
+                'tanggal_realisasi': date(2026, 11, 12),
+                'metode_pencairan': MetodePencairanChoices.TRANSFER_BANK,
+                'nomor_referensi_bank': 'REF-LOCK-001',
+                'nominal_cair': '6000000',
+            },
+        )
+        with self.assertRaises(ValidationError):
+            PembiayaanController.catatRealisasiPencairan(
+                pembiayaan_id=pmb.id,
+                bendahara=self.bendahara,
+                data_realisasi={
+                    'tanggal_realisasi': date(2026, 11, 12),
+                    'metode_pencairan': MetodePencairanChoices.TRANSFER_BANK,
+                    'nomor_referensi_bank': 'REF-LOCK-002',
+                    'nominal_cair': '6000000',
+                },
+            )
+
+        # 3. Pembayaran angsuran ke-1: pertama sukses, kedua ditolak (baik lewat controller maupun model)
+        jadwal_1 = JadwalAngsuran.objects.get(pembiayaan=pmb, angsuran_ke=1)
+        PembiayaanController.catatPembayaranAngsuran(
+            jadwal_id=jadwal_1.id,
+            bendahara=self.bendahara,
+            data_bayar={
+                'no_kuitansi': 'KUI-LOCK-001',
+                'nominal_bayar': str(jadwal_1.jumlah_angsuran),
+                'metode_bayar': MetodeBayarChoices.TUNAI,
+            },
+        )
+        with self.assertRaisesMessage(ValidationError, 'LUNAS'):
+            PembiayaanController.catatPembayaranAngsuran(
+                jadwal_id=jadwal_1.id,
+                bendahara=self.bendahara,
+                data_bayar={
+                    'no_kuitansi': 'KUI-LOCK-002',
+                    'nominal_bayar': str(jadwal_1.jumlah_angsuran),
+                    'metode_bayar': MetodeBayarChoices.TUNAI,
+                },
+            )
+        with self.assertRaisesMessage(ValidationError, 'LUNAS'):
+            PembayaranAngsuran.simpanPembayaranAngsuran(
+                jadwal_id=jadwal_1.id,
+                data_bayar={
+                    'bendahara_id': self.bendahara.id,
+                    'no_kuitansi': 'KUI-LOCK-003',
+                    'nominal_bayar': jadwal_1.jumlah_angsuran,
+                    'metode_bayar': MetodeBayarChoices.TUNAI,
+                },
+            )
+        self.assertEqual(PembayaranAngsuran.objects.filter(jadwal_angsuran=jadwal_1).count(), 1)
+
 
 
 

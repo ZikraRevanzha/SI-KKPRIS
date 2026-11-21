@@ -159,23 +159,24 @@ class SimpananController:
         if nominal <= Decimal('0.00'):
             raise ValidationError('Jumlah nominal transaksi harus lebih besar dari Rp 0.')
 
-        anggota = get_object_or_404(Anggota, pk=int(anggota_id))
-        if anggota.status == StatusAnggotaChoices.NON_AKTIF_KELUAR:
-            raise ValidationError(
-                f"Anggota {anggota.nama} ({anggota.no_anggota}) sudah berstatus Non-Aktif Keluar dan tidak dapat bertransaksi."
-            )
-
         jenis_simpanan = get_object_or_404(JenisSimpanan, pk=int(jenis_simpanan_id))
-        no_kuitansi = (
-            (data_input.get('no_kuitansi') or '').strip()
-            or cls.generateNoKuitansiSimpanan(jenis_simpanan.kode)
-        )
-
-        if not keterangan:
-            aksi_label = 'Setoran' if jenis_transaksi == JenisTransaksiSimpananChoices.SETOR else 'Penarikan'
-            keterangan = f"{aksi_label} {jenis_simpanan.nama} ({anggota.no_anggota})"
 
         with transaction.atomic():
+            anggota = get_object_or_404(Anggota.objects.select_for_update(), pk=int(anggota_id))
+            if anggota.status == StatusAnggotaChoices.NON_AKTIF_KELUAR:
+                raise ValidationError(
+                    f"Anggota {anggota.nama} ({anggota.no_anggota}) sudah berstatus Non-Aktif Keluar dan tidak dapat bertransaksi."
+                )
+
+            no_kuitansi = (
+                (data_input.get('no_kuitansi') or '').strip()
+                or cls.generateNoKuitansiSimpanan(jenis_simpanan.kode)
+            )
+
+            if not keterangan:
+                aksi_label = 'Setoran' if jenis_transaksi == JenisTransaksiSimpananChoices.SETOR else 'Penarikan'
+                keterangan = f"{aksi_label} {jenis_simpanan.nama} ({anggota.no_anggota})"
+
             mutasi = TransaksiSimpanan.simpanMutasiSimpanan({
                 'anggota_id': anggota.id,
                 'jenis_simpanan_id': jenis_simpanan.id,

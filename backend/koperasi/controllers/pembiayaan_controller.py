@@ -380,15 +380,6 @@ class PembiayaanController:
         if bendahara.peran != PeranPenggunaChoices.BENDAHARA:
             raise ValidationError('Verifikasi administrasi tahap pertama hanya dapat dilakukan oleh Bendahara.')
 
-        pembiayaan = get_object_or_404(Pembiayaan.objects.select_related('anggota', 'jenis_akad'), pk=pembiayaan_id)
-        if pembiayaan.status not in (
-            StatusPembiayaanChoices.MENUNGGU_VERIFIKASI,
-            StatusPembiayaanChoices.MENUNGGU_PERSETUJUAN_KETUA,
-        ):
-            raise ValidationError(
-                f'Pembiayaan {pembiayaan.no_pembiayaan} sudah berstatus {pembiayaan.get_status_display()} dan tidak dapat diverifikasi ulang.'
-            )
-
         keputusan_norm = (keputusan or KeputusanOtorisasiChoices.DISETUJUI).strip().upper()
         if keputusan_norm not in KeputusanOtorisasiChoices.values:
             raise ValidationError('Keputusan verifikasi harus berupa DISETUJUI atau DITOLAK.')
@@ -400,6 +391,18 @@ class PembiayaanController:
         )
 
         with transaction.atomic():
+            pembiayaan = get_object_or_404(
+                Pembiayaan.objects.select_for_update(),
+                pk=pembiayaan_id,
+            )
+            if pembiayaan.status not in (
+                StatusPembiayaanChoices.MENUNGGU_VERIFIKASI,
+                StatusPembiayaanChoices.MENUNGGU_PERSETUJUAN_KETUA,
+            ):
+                raise ValidationError(
+                    f'Pembiayaan {pembiayaan.no_pembiayaan} sudah berstatus {pembiayaan.get_status_display()} dan tidak dapat diverifikasi ulang.'
+                )
+
             persetujuan = PersetujuanPembiayaan.simpanKeputusanOtorisasi(
                 pembiayaan_id=pembiayaan.id,
                 pejabat_id=bendahara.id,
@@ -445,18 +448,6 @@ class PembiayaanController:
                 'Otorisasi pengeluaran kas (Two-Man Rule) hanya dapat dieksekusi oleh Ketua Koperasi.'
             )
 
-        pembiayaan = get_object_or_404(
-            Pembiayaan.objects.select_related('anggota', 'jenis_akad'),
-            pk=pembiayaan_id,
-        )
-        if pembiayaan.status not in (
-            StatusPembiayaanChoices.MENUNGGU_VERIFIKASI,
-            StatusPembiayaanChoices.MENUNGGU_PERSETUJUAN_KETUA,
-        ):
-            raise ValidationError(
-                f'Pembiayaan {pembiayaan.no_pembiayaan} sudah berstatus {pembiayaan.get_status_display()} dan tidak dapat diproses ulang.'
-            )
-
         keputusan_norm = (keputusan or '').strip().upper()
         if keputusan_norm not in KeputusanOtorisasiChoices.values:
             raise ValidationError('Keputusan otorisasi Ketua harus berupa DISETUJUI atau DITOLAK.')
@@ -468,6 +459,18 @@ class PembiayaanController:
         )
 
         with transaction.atomic():
+            pembiayaan = get_object_or_404(
+                Pembiayaan.objects.select_for_update(),
+                pk=pembiayaan_id,
+            )
+            if pembiayaan.status not in (
+                StatusPembiayaanChoices.MENUNGGU_VERIFIKASI,
+                StatusPembiayaanChoices.MENUNGGU_PERSETUJUAN_KETUA,
+            ):
+                raise ValidationError(
+                    f'Pembiayaan {pembiayaan.no_pembiayaan} sudah berstatus {pembiayaan.get_status_display()} dan tidak dapat diproses ulang.'
+                )
+
             persetujuan = PersetujuanPembiayaan.simpanKeputusanOtorisasi(
                 pembiayaan_id=pembiayaan.id,
                 pejabat_id=pejabat.id,
@@ -513,46 +516,46 @@ class PembiayaanController:
         if bendahara.peran != PeranPenggunaChoices.BENDAHARA:
             raise ValidationError('Pencatatan realisasi pencairan hanya dapat dilakukan oleh Bendahara.')
 
-        pembiayaan = get_object_or_404(
-            Pembiayaan.objects.select_related('anggota', 'jenis_akad'),
-            pk=pembiayaan_id,
-        )
-        if pembiayaan.status != StatusPembiayaanChoices.DISETUJUI_KETUA:
-            raise ValidationError(
-                'Pencairan hanya dapat direalisasikan untuk pembiayaan yang telah disetujui Ketua (Two-Man Rule).'
-            )
-        if RealisasiPencairan.objects.filter(pembiayaan=pembiayaan).exists():
-            raise ValidationError(f'Realisasi pencairan untuk {pembiayaan.no_pembiayaan} sudah pernah dicatat.')
-
         metode_pencairan = (
             data_realisasi.get('metode_pencairan') or MetodePencairanChoices.TRANSFER_BANK
         ).strip().upper()
         if metode_pencairan not in MetodePencairanChoices.values:
             metode_pencairan = MetodePencairanChoices.TRANSFER_BANK
 
-        nomor_referensi = (data_realisasi.get('nomor_referensi_bank') or '').strip()
-        if not nomor_referensi:
-            nomor_referensi = f"REF-{pembiayaan.no_pembiayaan}-{date.today():%Y%m%d}"
-
         tgl_realisasi = data_realisasi.get('tanggal_realisasi') or date.today()
         if isinstance(tgl_realisasi, str):
             tgl_realisasi = date.fromisoformat(tgl_realisasi)
 
-        raw_nominal_cair = data_realisasi.get('nominal_cair')
-        nominal_cair = (
-            bersihkan_rupiah(raw_nominal_cair)
-            if raw_nominal_cair
-            else pembiayaan.harga_pokok
-        )
-
-        if berkas_bukti:
-            bukti_url = _simpan_berkas_pembiayaan(berkas_bukti, 'pencairan', pembiayaan.no_pembiayaan)
-        elif data_realisasi.get('bukti_transfer_url'):
-            bukti_url = str(data_realisasi['bukti_transfer_url']).strip()
-        else:
-            bukti_url = f"media/pencairan/bukti_{pembiayaan.no_pembiayaan.lower()}.pdf"
-
         with transaction.atomic():
+            pembiayaan = get_object_or_404(
+                Pembiayaan.objects.select_for_update(),
+                pk=pembiayaan_id,
+            )
+            if pembiayaan.status != StatusPembiayaanChoices.DISETUJUI_KETUA:
+                raise ValidationError(
+                    'Pencairan hanya dapat direalisasikan untuk pembiayaan yang telah disetujui Ketua (Two-Man Rule).'
+                )
+            if RealisasiPencairan.objects.filter(pembiayaan=pembiayaan).exists():
+                raise ValidationError(f'Realisasi pencairan untuk {pembiayaan.no_pembiayaan} sudah pernah dicatat.')
+
+            nomor_referensi = (data_realisasi.get('nomor_referensi_bank') or '').strip()
+            if not nomor_referensi:
+                nomor_referensi = f"REF-{pembiayaan.no_pembiayaan}-{date.today():%Y%m%d}"
+
+            raw_nominal_cair = data_realisasi.get('nominal_cair')
+            nominal_cair = (
+                bersihkan_rupiah(raw_nominal_cair)
+                if raw_nominal_cair
+                else pembiayaan.harga_pokok
+            )
+
+            if berkas_bukti:
+                bukti_url = _simpan_berkas_pembiayaan(berkas_bukti, 'pencairan', pembiayaan.no_pembiayaan)
+            elif data_realisasi.get('bukti_transfer_url'):
+                bukti_url = str(data_realisasi['bukti_transfer_url']).strip()
+            else:
+                bukti_url = f"media/pencairan/bukti_{pembiayaan.no_pembiayaan.lower()}.pdf"
+
             realisasi = RealisasiPencairan.simpanRealisasiPencairan(
                 pembiayaan_id=pembiayaan.id,
                 data_realisasi={
@@ -608,23 +611,29 @@ class PembiayaanController:
         otomatis melunasi kontrak pembiayaan apabila seluruh jadwal angsuran telah LUNAS.
         (Disiapkan sesuai Class Diagram untuk integrasi penuh Tahap 5 & Tahap 6).
         """
-        jadwal = get_object_or_404(
-            JadwalAngsuran.objects.select_related('pembiayaan', 'pembiayaan__anggota'),
-            pk=jadwal_id,
-        )
-        no_kuitansi = (data_bayar.get('no_kuitansi') or '').strip()
-        if not no_kuitansi:
-            no_kuitansi = f"KUI-ANG-{jadwal.pembiayaan.id}-{jadwal.angsuran_ke:02d}-{timezone.now():%H%M%S}"
-
-        nominal_bayar = bersihkan_rupiah(
-            data_bayar.get('nominal_bayar') or jadwal.jumlah_angsuran
-        )
         potongan_margin = bersihkan_rupiah(
             data_bayar.get('potongan_margin'), default='0.00'
         )  # PENDING PND-08
         metode_bayar = (data_bayar.get('metode_bayar') or MetodeBayarChoices.TUNAI).strip().upper()
 
         with transaction.atomic():
+            jadwal = get_object_or_404(
+                JadwalAngsuran.objects.select_for_update(),
+                pk=jadwal_id,
+            )
+            if jadwal.status_bayar == StatusBayarAngsuranChoices.LUNAS:
+                raise ValidationError(
+                    f'Angsuran ke-{jadwal.angsuran_ke} sudah berstatus LUNAS dan tidak dapat dibayar ulang.'
+                )
+
+            no_kuitansi = (data_bayar.get('no_kuitansi') or '').strip()
+            if not no_kuitansi:
+                no_kuitansi = f"KUI-ANG-{jadwal.pembiayaan.id}-{jadwal.angsuran_ke:02d}-{timezone.now():%H%M%S}"
+
+            nominal_bayar = bersihkan_rupiah(
+                data_bayar.get('nominal_bayar') or jadwal.jumlah_angsuran
+            )
+
             pembayaran = PembayaranAngsuran.simpanPembayaranAngsuran(
                 jadwal_id=jadwal.id,
                 data_bayar={

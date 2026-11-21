@@ -292,22 +292,21 @@ class RekapNotifikasiController:
         - Mencatat setoran Simpanan Wajib (SWJ) otomatis untuk setiap anggota pada rekap
         - Mencatat PembayaranAngsuran & melunasi JadwalAngsuran terkait secara batch
         """
-        rekap = get_object_or_404(
-            RekapPotongGaji.objects.prefetch_related(
-                'detail_list__anggota',
-                'detail_list__jadwal_angsuran',
-                'detail_list__jadwal_angsuran__pembiayaan',
-            ),
-            pk=rekap_id,
-        )
-        if rekap.status_rekap == StatusRekapGajiChoices.LUNAS_KOLEKTIF:
-            raise ValidationError(f'Rekap {rekap.kode_rekap} sudah berstatus Lunas Kolektif.')
-
-        no_ref = (no_ref_bank or '').strip() or f"TRF-GAJI-{rekap.kode_rekap}"
         js_wajib = JenisSimpanan.ambilJenisSimpananWajib()
 
         with transaction.atomic():
-            for idx, det in enumerate(rekap.detail_list.all(), start=1):
+            rekap = get_object_or_404(
+                RekapPotongGaji.objects.select_for_update(),
+                pk=rekap_id,
+            )
+            if rekap.status_rekap == StatusRekapGajiChoices.LUNAS_KOLEKTIF:
+                raise ValidationError(f'Rekap {rekap.kode_rekap} sudah berstatus Lunas Kolektif.')
+
+            no_ref = (no_ref_bank or '').strip() or f"TRF-GAJI-{rekap.kode_rekap}"
+            detail_list = rekap.detail_list.select_related(
+                'anggota', 'jadwal_angsuran', 'jadwal_angsuran__pembiayaan'
+            )
+            for idx, det in enumerate(detail_list, start=1):
                 # 1. Catat Setoran Simpanan Wajib (SWJ) jika > 0
                 if js_wajib and det.nominal_simpanan_wajib > Decimal('0.00'):
                     no_kui_swj = f"KUI-SWJ-{rekap.kode_rekap}-{det.anggota.id}"

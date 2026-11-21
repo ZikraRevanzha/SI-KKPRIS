@@ -379,30 +379,34 @@ class TransaksiSimpanan(models.Model):
         jenis_transaksi = data_mutasi['jenis_transaksi']
         nominal = Decimal(str(data_mutasi['nominal'])).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
-        saldo_awal = cls.hitungSaldoBerjalan(anggota_id, jenis_simpanan_id)
-        if jenis_transaksi == JenisTransaksiSimpananChoices.TARIK:
-            if not JenisSimpanan.cekDapatDitarik(jenis_simpanan_id):
-                raise ValidationError(
-                    'Simpanan Pokok, Wajib, dan Khusus bersifat terkunci dan hanya dapat dicairkan saat pengunduran diri.'
-                )
-            if nominal > saldo_awal:
-                raise ValidationError('Nominal penarikan melebihi saldo simpanan yang tersedia.')
-            saldo_sesudah = saldo_awal - nominal
-        else:
-            saldo_sesudah = saldo_awal + nominal
+        with transaction.atomic():
+            # Kunci baris Anggota sebelum membaca saldo terakhir agar saldo_sesudah berantai konsisten
+            Anggota.objects.select_for_update().get(pk=anggota_id)
 
-        return cls.objects.create(
-            anggota_id=anggota_id,
-            jenis_simpanan_id=jenis_simpanan_id,
-            bendahara_id=data_mutasi['bendahara_id'],
-            no_kuitansi=data_mutasi['no_kuitansi'],
-            jenis_transaksi=jenis_transaksi,
-            metode_bayar=data_mutasi.get('metode_bayar', MetodeBayarChoices.TUNAI),
-            nominal=nominal,
-            saldo_sesudah=saldo_sesudah,
-            bukti_transaksi_url=data_mutasi.get('bukti_transaksi_url'),
-            keterangan=data_mutasi.get('keterangan'),
-        )
+            saldo_awal = cls.hitungSaldoBerjalan(anggota_id, jenis_simpanan_id)
+            if jenis_transaksi == JenisTransaksiSimpananChoices.TARIK:
+                if not JenisSimpanan.cekDapatDitarik(jenis_simpanan_id):
+                    raise ValidationError(
+                        'Simpanan Pokok, Wajib, dan Khusus bersifat terkunci dan hanya dapat dicairkan saat pengunduran diri.'
+                    )
+                if nominal > saldo_awal:
+                    raise ValidationError('Nominal penarikan melebihi saldo simpanan yang tersedia.')
+                saldo_sesudah = saldo_awal - nominal
+            else:
+                saldo_sesudah = saldo_awal + nominal
+
+            return cls.objects.create(
+                anggota_id=anggota_id,
+                jenis_simpanan_id=jenis_simpanan_id,
+                bendahara_id=data_mutasi['bendahara_id'],
+                no_kuitansi=data_mutasi['no_kuitansi'],
+                jenis_transaksi=jenis_transaksi,
+                metode_bayar=data_mutasi.get('metode_bayar', MetodeBayarChoices.TUNAI),
+                nominal=nominal,
+                saldo_sesudah=saldo_sesudah,
+                bukti_transaksi_url=data_mutasi.get('bukti_transaksi_url'),
+                keterangan=data_mutasi.get('keterangan'),
+            )
 
     @classmethod
     def cariBerdasarkanKuitansi(cls, no_kuitansi: str):
@@ -806,22 +810,27 @@ class RealisasiPencairan(models.Model):
     @classmethod
     def simpanRealisasiPencairan(cls, pembiayaan_id: int, data_realisasi: dict) -> 'RealisasiPencairan':
         """Mencatat realisasi pencairan dana off-system setelah disetujui Ketua Koperasi."""
-        pembiayaan = Pembiayaan.objects.get(pk=pembiayaan_id)
-        if pembiayaan.status != StatusPembiayaanChoices.DISETUJUI_KETUA:
-            raise ValidationError(
-                'Pencairan hanya dapat direalisasikan untuk pembiayaan yang telah disetujui Ketua (Two-Man Rule).'
+        with transaction.atomic():
+            pembiayaan = Pembiayaan.objects.select_for_update().get(pk=pembiayaan_id)
+            if pembiayaan.status != StatusPembiayaanChoices.DISETUJUI_KETUA:
+                raise ValidationError(
+                    'Pencairan hanya dapat direalisasikan untuk pembiayaan yang telah disetujui Ketua (Two-Man Rule).'
+                )
+            if cls.objects.filter(pembiayaan_id=pembiayaan_id).exists():
+                raise ValidationError(
+                    f'Realisasi pencairan untuk {pembiayaan.no_pembiayaan} sudah pernah dicatat.'
+                )
+            return cls.objects.create(
+                pembiayaan_id=pembiayaan_id,
+                bendahara_id=data_realisasi['bendahara_id'],
+                tanggal_realisasi=data_realisasi.get('tanggal_realisasi') or date.today(),
+                metode_pencairan=data_realisasi['metode_pencairan'],
+                nomor_referensi_bank=data_realisasi['nomor_referensi_bank'],
+                nominal_cair=Decimal(str(data_realisasi['nominal_cair'])).quantize(
+                    Decimal('0.01'), rounding=ROUND_HALF_UP
+                ),
+                bukti_transfer_url=data_realisasi['bukti_transfer_url'],
             )
-        return cls.objects.create(
-            pembiayaan_id=pembiayaan_id,
-            bendahara_id=data_realisasi['bendahara_id'],
-            tanggal_realisasi=data_realisasi.get('tanggal_realisasi') or date.today(),
-            metode_pencairan=data_realisasi['metode_pencairan'],
-            nomor_referensi_bank=data_realisasi['nomor_referensi_bank'],
-            nominal_cair=Decimal(str(data_realisasi['nominal_cair'])).quantize(
-                Decimal('0.01'), rounding=ROUND_HALF_UP
-            ),
-            bukti_transfer_url=data_realisasi['bukti_transfer_url'],
-        )
 
 
 # ============================================================================
@@ -1199,10 +1208,15 @@ class PembayaranAngsuran(models.Model):
 
     @classmethod
     def simpanPembayaranAngsuran(cls, jadwal_id: int, data_bayar: dict) -> 'PembayaranAngsuran':
-        """Mencatat pembayaran angsuran dan memperbarui status jadwal angsuran."""
+        """Mencatat pembayaran angsuran dan memperbarui status jadwal angsuran di dalam kunci baris."""
         with transaction.atomic():
+            jadwal = JadwalAngsuran.objects.select_for_update().get(pk=jadwal_id)
+            if jadwal.status_bayar == StatusBayarAngsuranChoices.LUNAS:
+                raise ValidationError(
+                    f'Angsuran ke-{jadwal.angsuran_ke} sudah berstatus LUNAS dan tidak dapat dibayar ulang.'
+                )
             pembayaran = cls.objects.create(
-                jadwal_angsuran_id=jadwal_id,
+                jadwal_angsuran_id=jadwal.id,
                 bendahara_id=data_bayar['bendahara_id'],
                 rekap_potong_gaji_id=data_bayar.get('rekap_potong_gaji_id'),
                 no_kuitansi=data_bayar['no_kuitansi'],
@@ -1217,7 +1231,7 @@ class PembayaranAngsuran(models.Model):
                 bukti_bayar_url=data_bayar.get('bukti_bayar_url'),
             )
             JadwalAngsuran.tandaiJadwalLunas(
-                jadwal_id=jadwal_id,
+                jadwal_id=jadwal.id,
                 tanggal_bayar=date.today(),
                 cara_bayar=data_bayar['metode_bayar'],
             )
