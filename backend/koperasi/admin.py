@@ -4,6 +4,8 @@ Termasuk proteksi append-only pada AuditTrailLog (NFR Auditability).
 """
 
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from .models import (
     Agunan,
     Anggota,
@@ -24,11 +26,43 @@ from .models import (
 )
 
 
+class PenggunaCreationForm(UserCreationForm):
+    class Meta(UserCreationForm.Meta):
+        model = Pengguna
+        fields = ('username', 'nama_lengkap', 'peran', 'is_aktif', 'is_staff')
+
+
+class PenggunaChangeForm(UserChangeForm):
+    class Meta(UserChangeForm.Meta):
+        model = Pengguna
+        fields = '__all__'
+
+
 @admin.register(Pengguna)
-class PenggunaAdmin(admin.ModelAdmin):
-    list_display = ('id', 'username', 'nama_lengkap', 'peran', 'is_aktif', 'created_at')
-    list_filter = ('peran', 'is_aktif')
+class PenggunaAdmin(BaseUserAdmin):
+    form = PenggunaChangeForm
+    add_form = PenggunaCreationForm
+    list_display = ('id', 'username', 'nama_lengkap', 'peran', 'is_aktif', 'is_staff', 'created_at')
+    list_filter = ('peran', 'is_aktif', 'is_staff', 'is_superuser')
     search_fields = ('username', 'nama_lengkap')
+    ordering = ('id',)
+    readonly_fields = ('last_login', 'created_at')
+    filter_horizontal = ('groups', 'user_permissions')
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        ('Informasi Pengguna', {'fields': ('nama_lengkap', 'peran')}),
+        ('Status & Hak Akses', {'fields': ('is_aktif', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Waktu', {'fields': ('last_login', 'created_at')}),
+    )
+    add_fieldsets = (
+        (
+            None,
+            {
+                'classes': ('wide',),
+                'fields': ('username', 'nama_lengkap', 'peran', 'is_aktif', 'is_staff', 'password1', 'password2'),
+            },
+        ),
+    )
 
 
 @admin.register(Anggota)

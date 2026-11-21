@@ -155,7 +155,7 @@ class Command(BaseCommand):
         ketua, _ = Pengguna.objects.update_or_create(
             username='ketua01',
             defaults={
-                'password_hash': default_pw,
+                'password': default_pw,
                 'nama_lengkap': 'Ketua Dummy Satu',
                 'peran': PeranPenggunaChoices.KETUA,
                 'is_aktif': True,
@@ -164,7 +164,7 @@ class Command(BaseCommand):
         bendahara, _ = Pengguna.objects.update_or_create(
             username='bendahara01',
             defaults={
-                'password_hash': default_pw,
+                'password': default_pw,
                 'nama_lengkap': 'Bendahara Dummy Satu',
                 'peran': PeranPenggunaChoices.BENDAHARA,
                 'is_aktif': True,
@@ -173,7 +173,7 @@ class Command(BaseCommand):
         user_anggota_01, _ = Pengguna.objects.update_or_create(
             username='anggota01',
             defaults={
-                'password_hash': default_pw,
+                'password': default_pw,
                 'nama_lengkap': 'Anggota Dummy Satu',
                 'peran': PeranPenggunaChoices.ANGGOTA,
                 'is_aktif': True,
@@ -288,7 +288,7 @@ class Command(BaseCommand):
             user_anggota_02, _ = Pengguna.objects.update_or_create(
                 username='anggota02',
                 defaults={
-                    'password_hash': default_pw,
+                    'password': default_pw,
                     'nama_lengkap': 'Anggota Dummy Dua',
                     'peran': PeranPenggunaChoices.ANGGOTA,
                     'is_aktif': True,
@@ -328,7 +328,7 @@ class Command(BaseCommand):
             user_anggota_03, _ = Pengguna.objects.update_or_create(
                 username='anggota03',
                 defaults={
-                    'password_hash': default_pw,
+                    'password': default_pw,
                     'nama_lengkap': 'Anggota Dummy Tiga',
                     'peran': PeranPenggunaChoices.ANGGOTA,
                     'is_aktif': True,

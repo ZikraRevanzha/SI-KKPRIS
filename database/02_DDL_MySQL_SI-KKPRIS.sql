@@ -6,14 +6,17 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- 1. TABEL: pengguna (Perubahan kolom peran menjadi ENUM - T-11, DEF-06)
+-- 1. TABEL: pengguna (Perubahan kolom peran menjadi ENUM - T-11, DEF-06; sinkron AbstractBaseUser + PermissionsMixin Tahap 9A)
 CREATE TABLE `pengguna` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `password` VARCHAR(128) NOT NULL,
+    `last_login` DATETIME NULL,
+    `is_superuser` TINYINT(1) NOT NULL DEFAULT 0,
     `username` VARCHAR(50) NOT NULL,
-    `password_hash` VARCHAR(255) NOT NULL,
     `nama_lengkap` VARCHAR(150) NOT NULL,
     `peran` ENUM('ANGGOTA', 'BENDAHARA', 'KETUA') NOT NULL DEFAULT 'ANGGOTA',
     `is_aktif` TINYINT(1) NOT NULL DEFAULT 1,
+    `is_staff` TINYINT(1) NOT NULL DEFAULT 0,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_pengguna_username` (`username`)

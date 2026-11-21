@@ -7,9 +7,7 @@ serta pencatatan otomatis AuditTrailLog.
 from datetime import date
 from decimal import Decimal
 from functools import wraps
-from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.hashers import check_password, make_password
 from django.db.models import Count, Q, Sum
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -30,18 +28,12 @@ from koperasi.models import (
     StatusPembiayaanChoices,
     TransaksiSimpanan,
 )
+from koperasi.services import auth_service
 
 
 def _ambil_ip_klien(request) -> str:
-    """
-    Mengambil alamat IP pengguna untuk AuditTrailLog.
-    Mempercayai REMOTE_ADDR secara baku; X-Forwarded-For hanya dibaca jika settings.TRUSTED_PROXY=True.
-    """
-    if getattr(settings, 'TRUSTED_PROXY', False):
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            return x_forwarded_for.split(',')[0].strip()[:45]
-    return (request.META.get('REMOTE_ADDR') or '127.0.0.1')[:45]
+    """Wrapper kompatibilitas untuk auth_service.ambil_ip_klien."""
+    return auth_service.ambil_ip_klien(request)
 
 
 def ambil_pengguna_aktif(request):
@@ -84,12 +76,10 @@ def peran_wajib(*peran_diizinkan):
         @login_wajib
         def _wrapped_view(request, *args, **kwargs):
             if request.pengguna.peran not in peran_diizinkan:
-                AuditTrailLog.catatLogAudit(
+                auth_service.catat_akses_ditolak(
                     pengguna_id=request.pengguna.id,
-                    aksi='AKSES_DITOLAK_RBAC',
-                    nama_tabel='pengguna',
-                    record_id=request.pengguna.id,
-                    detail=f"Percobaan akses tidak sah ke {request.path} oleh peran {request.pengguna.peran}",
+                    peran=request.pengguna.peran,
+                    path=request.path,
                     ip_address=_ambil_ip_klien(request),
                 )
                 messages.error(
@@ -109,64 +99,25 @@ def peran_wajib(*peran_diizinkan):
 class AuthController:
     """
     Controller Autentikasi & Otorisasi SI-KKPRIS (UC-01).
-    Mendukung login menggunakan Username maupun Nomor Anggota (contoh: KKP-2026-001).
+    Mendelegasikan logika autentikasi, logout, dan ganti password ke koperasi.services.auth_service.
     """
 
     @staticmethod
     def login(identifier: str, password: str, ip_address: str = '127.0.0.1'):
-        """
-        Memvalidasi kredensial (username atau no_anggota) dan mencatat AuditTrailLog.
-        Mengembalikan objek Pengguna jika valid, atau None jika gagal.
-        """
-        ident = (identifier or '').strip()
-        if not ident or not password:
-            return None
-
-        # Cari berdasarkan username terlebih dahulu, atau no_anggota pada tabel anggota
-        pengguna = Pengguna.objects.filter(username=ident).first()
-        if not pengguna:
-            anggota = Anggota.objects.select_related('pengguna').filter(no_anggota__iexact=ident).first()
-            if anggota:
-                pengguna = anggota.pengguna
-
-        if not pengguna or not pengguna.cekStatusAktif():
-            return None
-
-        if check_password(password, pengguna.password_hash):
-            AuditTrailLog.catatLogAudit(
-                pengguna_id=pengguna.id,
-                aksi='LOGIN_BERHASIL',
-                nama_tabel='pengguna',
-                record_id=pengguna.id,
-                detail=f"Pengguna {pengguna.username} ({pengguna.peran}) berhasil masuk ke sistem.",
-                ip_address=ip_address,
-            )
-            return pengguna
-
-        AuditTrailLog.catatLogAudit(
-            pengguna_id=pengguna.id,
-            aksi='LOGIN_GAGAL',
-            nama_tabel='pengguna',
-            record_id=pengguna.id,
-            detail=f"Percobaan login gagal (password salah) untuk akun {pengguna.username}.",
+        """Memvalidasi kredensial (username atau no_anggota) melalui auth_service."""
+        return auth_service.autentikasi_pengguna(
+            identifier=identifier,
+            password=password,
             ip_address=ip_address,
         )
-        return None
 
     @staticmethod
     def logout(pengguna_id: int, ip_address: str = '127.0.0.1') -> bool:
-        """Mencatat jejak logout pada AuditTrailLog dan mengakhiri sesi."""
-        if pengguna_id and Pengguna.objects.filter(pk=pengguna_id).exists():
-            AuditTrailLog.catatLogAudit(
-                pengguna_id=pengguna_id,
-                aksi='LOGOUT',
-                nama_tabel='pengguna',
-                record_id=pengguna_id,
-                detail='Pengguna keluar (logout) dari sistem SI-KKPRIS.',
-                ip_address=ip_address,
-            )
-            return True
-        return False
+        """Mencatat jejak logout pada AuditTrailLog melalui auth_service."""
+        return auth_service.catat_logout(
+            pengguna_id=pengguna_id,
+            ip_address=ip_address,
+        )
 
     @staticmethod
     def gantiPassword(
@@ -175,24 +126,13 @@ class AuthController:
         password_baru: str,
         ip_address: str = '127.0.0.1',
     ) -> tuple[bool, str]:
-        """Memvalidasi password lama dan memperbarui password baru dengan hash PBKDF2."""
-        if not check_password(password_lama, pengguna.password_hash):
-            return False, 'Password lama yang Anda masukkan tidak sesuai.'
-        if len(password_baru) < 8:
-            return False, 'Password baru minimal harus terdiri dari 8 karakter.'
-
-        pengguna.password_hash = make_password(password_baru)
-        pengguna.save(update_fields=['password_hash'])
-
-        AuditTrailLog.catatLogAudit(
-            pengguna_id=pengguna.id,
-            aksi='GANTI_PASSWORD',
-            nama_tabel='pengguna',
-            record_id=pengguna.id,
-            detail=f"Pengguna {pengguna.username} berhasil memperbarui kata sandi akun.",
+        """Memvalidasi password lama dan memperbarui password baru melalui auth_service."""
+        return auth_service.ganti_password(
+            pengguna=pengguna,
+            password_lama=password_lama,
+            password_baru=password_baru,
             ip_address=ip_address,
         )
-        return True, 'Kata sandi Anda berhasil diperbarui.'
 
 
 # ============================================================================

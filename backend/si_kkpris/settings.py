@@ -148,6 +148,8 @@ DATABASES = {
 }
 
 # Password validation & Hashing (PBKDF2 SHA256 saja sesuai NFR Security & AGENTS.md 4.F)
+AUTH_USER_MODEL = 'koperasi.Pengguna'
+
 AUTH_PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
 ]

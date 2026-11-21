@@ -10,7 +10,7 @@ Selaras 100% dengan:
 
 from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
-from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Q, Sum
@@ -135,10 +135,45 @@ class StatusPengajuanResignChoices(models.TextChoices):
 # 1. TABEL: pengguna (Manajemen Akun & RBAC 3 Peran)
 # ============================================================================
 
-class Pengguna(models.Model):
+class PenggunaManager(BaseUserManager):
+    """Manager kustom untuk model Pengguna berbasis AbstractBaseUser."""
+
+    def create_user(self, username: str, password: str | None = None, **extra_fields) -> 'Pengguna':
+        if not username or not username.strip():
+            raise ValueError('Username wajib diisi.')
+        username_bersih = username.strip()
+        extra_fields.setdefault('nama_lengkap', username_bersih)
+        extra_fields.setdefault('peran', PeranPenggunaChoices.ANGGOTA)
+        extra_fields.setdefault('is_aktif', True)
+        extra_fields.setdefault('is_staff', False)
+        extra_fields.setdefault('is_superuser', False)
+
+        pengguna = self.model(username=username_bersih, **extra_fields)
+        if password and password.startswith('pbkdf2_'):
+            pengguna.password = password
+        elif password:
+            pengguna.set_password(password)
+        else:
+            pengguna.set_unusable_password()
+        pengguna.save(using=self._db)
+        return pengguna
+
+    def create_superuser(self, username: str, password: str | None = None, **extra_fields) -> 'Pengguna':
+        extra_fields.setdefault('nama_lengkap', username)
+        extra_fields.setdefault('peran', PeranPenggunaChoices.KETUA)
+        extra_fields.setdefault('is_aktif', True)
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser harus memiliki is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser harus memiliki is_superuser=True.')
+        return self.create_user(username=username, password=password, **extra_fields)
+
+
+class Pengguna(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
     username = models.CharField(max_length=50, unique=True)
-    password_hash = models.CharField(max_length=255)
     nama_lengkap = models.CharField(max_length=150)
     peran = models.CharField(
         max_length=20,
@@ -146,7 +181,13 @@ class Pengguna(models.Model):
         default=PeranPenggunaChoices.ANGGOTA,
     )
     is_aktif = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
+
+    objects = PenggunaManager()
+
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['nama_lengkap']
 
     class Meta:
         db_table = 'pengguna'
@@ -156,6 +197,15 @@ class Pengguna(models.Model):
 
     def __str__(self) -> str:
         return f"{self.username} - {self.nama_lengkap} ({self.peran})"
+
+    @property
+    def is_active(self) -> bool:
+        """Alias standar Django/SimpleJWT yang terhubung ke kolom is_aktif."""
+        return bool(self.is_aktif)
+
+    @is_active.setter
+    def is_active(self, value: bool) -> None:
+        self.is_aktif = bool(value)
 
     def cekStatusAktif(self) -> bool:
         """Memeriksa apakah akun pengguna berstatus aktif."""
@@ -168,7 +218,7 @@ class Pengguna(models.Model):
             pengguna = cls.objects.get(username=username)
         except cls.DoesNotExist:
             return None
-        if pengguna.cekStatusAktif() and check_password(password, pengguna.password_hash):
+        if pengguna.cekStatusAktif() and pengguna.check_password(password):
             return pengguna
         return None
 
@@ -176,14 +226,9 @@ class Pengguna(models.Model):
     def buatAkunPengguna(cls, data_akun: dict) -> 'Pengguna':
         """Membuat akun pengguna baru dengan password yang di-hash aman."""
         raw_password = data_akun.get('password') or data_akun.get('password_hash', '')
-        hashed = (
-            raw_password
-            if raw_password.startswith('pbkdf2_')
-            else make_password(raw_password)
-        )
-        return cls.objects.create(
+        return cls.objects.create_user(
             username=data_akun['username'],
-            password_hash=hashed,
+            password=raw_password,
             nama_lengkap=data_akun['nama_lengkap'],
             peran=data_akun.get('peran', PeranPenggunaChoices.ANGGOTA),
             is_aktif=data_akun.get('is_aktif', True),
