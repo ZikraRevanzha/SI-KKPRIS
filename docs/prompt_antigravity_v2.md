@@ -94,7 +94,7 @@ A. DESIGN SYSTEM
 3. Tulis docs/design-system.md: palet beserta rasio kontras yang DIHITUNG (AA), skala tipografi, daftar komponen, aturan loading (AGENTS.md 7.D), aturan penggunaan aksen.
 4. Komponen src/components/ui/ (hanya yang jelas dibutuhkan; sisanya dibuat saat modul membutuhkan): Button (primary/secondary/ghost/danger, prop loading), Field + Input + Select + Textarea, Card, Badge (status), Table (responsif, kolom angka rata kanan tabular-nums), Dialog (elemen <dialog> native) + ConfirmDialog, Toast (live region), Skeleton (shimmer), Spinner (arc), TopProgress (indeterminate bar), ProgressBar (persen), EmptyState, ErrorState, PageHeader.
    Semua loading mengikuti AGENTS.md 7.D: tunda ±200 ms, aria-busy/role="status"/teks sr-only, dukung prefers-reduced-motion, hanya animasi transform/opacity, CSS murni.
-5. Layout: AppShell dengan Sidebar (drawer di layar kecil), Topbar (menu pengguna, keluar), tautan "lompat ke konten", indikator menu aktif (aksen), menu dari konfigurasi per peran (navigation.ts). Ikon lucide-react, TANPA emoji.
+5. Layout: AppShell dengan Sidebar (drawer di layar kecil), Topbar (menu pengguna, keluar), tautan "lompat ke konten", indikator menu aktif (aksen), menu dari konfigurasi per peran (navigation.ts). Ikon lucide-react, TANPA emoji. Patuhi AGENTS.md 7.F (mobile-first, drawer di bawah lg, tabel menjadi kartu di bawah md, area sentuh 44 px, viewport tanpa pembatas zoom, tanpa gulir horizontal).
 
 B. HALAMAN (3)
 6. Login: React Hook Form + Zod, galat server tampil jelas, tombol dengan spinner dan teks "Masuk…", tanpa emoji.

@@ -220,6 +220,18 @@ Aturan wajib:
 
 Kontras AA, fokus keyboard terlihat, semua fungsi bisa tanpa mouse, galat formulir diumumkan ke pembaca layar, hormati ukuran teks OS. Periksa di lebar 375, 768, dan 1280 px sebelum menandai halaman selesai.
 
+### F. Responsif / mobile (aplikasi `web/`)
+
+1. **Mobile-first:** gaya dasar untuk layar kecil, lalu perlebar dengan breakpoint Tailwind (`sm` 640, `md` 768, `lg` 1024, `xl` 1280). Tanpa `max-width` kustom di komponen.
+2. `index.html` wajib `<meta name="viewport" content="width=device-width, initial-scale=1">`. Dilarang menonaktifkan zoom (`user-scalable=no`, `maximum-scale`).
+3. **Navigasi:** sidebar menjadi drawer di bawah `lg` (tombol menu di Topbar, `<dialog>`/Popover native, fokus terkunci, tutup dengan Esc dan klik di luar). Sidebar tetap tampil mulai `lg`.
+4. **Tabel:** di bawah `md` tampil sebagai daftar kartu bertumpuk (label + nilai) atau digulir horizontal di dalam kontainernya; halaman tidak boleh punya gulir horizontal. Angka rupiah tetap rata kanan dan `tabular-nums`.
+5. **Formulir:** satu kolom di layar kecil, dua kolom mulai `md`. Tinggi kontrol dan area sentuh minimal 44×44 px; `inputmode`/`autocomplete` sesuai isian (mis. `inputmode="numeric"` untuk nominal, tetap string).
+6. **Dialog dan aksi:** dialog konfirmasi memenuhi lebar layar kecil (bottom sheet atau lebar penuh dengan margin); tombol aksi utama dapat dijangkau ibu jari.
+7. Gunakan container queries untuk komponen yang lebarnya ditentukan induk; unit `dvh`/`dvw` untuk tinggi layar penuh agar aman di peramban seluler.
+8. Teks minimal 16 px pada input (cegah zoom otomatis iOS); hormati ukuran teks OS; hormati `env(safe-area-inset-*)` bila ada elemen menempel di tepi.
+9. Verifikasi tiap halaman di 375, 768, dan 1280 px: tanpa gulir horizontal, tanpa teks terpotong, semua fungsi dapat dipakai dengan sentuhan dan keyboard.
+
 ---
 
 ## 8. Definisi Selesai
