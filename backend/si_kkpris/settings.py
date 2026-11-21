@@ -205,6 +205,8 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
     ),
+    'EXCEPTION_HANDLER': 'koperasi.api.v1.exceptions.handler_galat_seragam',
+    'DEFAULT_PAGINATION_CLASS': 'koperasi.api.v1.pagination.StandarPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_THROTTLE_RATES': {
         'login': os.getenv('LOGIN_THROTTLE_RATE', '10/min'),
@@ -225,10 +227,16 @@ SIMPLE_JWT = {
 }
 
 # Pengaturan cookie Refresh Token JWT (httpOnly, SameSite=Strict, Path=/api/v1/auth/)
+# Jika JWT_REFRESH_COOKIE_SECURE tidak diatur di env, otomatis Secure=True saat DEBUG=False.
 JWT_REFRESH_COOKIE_NAME = 'kkpris_refresh'
 JWT_REFRESH_COOKIE_PATH = '/api/v1/auth/'
 JWT_REFRESH_COOKIE_SAMESITE = 'Strict'
-JWT_REFRESH_COOKIE_SECURE = _env_bool('JWT_REFRESH_COOKIE_SECURE', default=not DEBUG)
+_jwt_cookie_secure_env = os.getenv('JWT_REFRESH_COOKIE_SECURE')
+JWT_REFRESH_COOKIE_SECURE = (
+    _env_bool('JWT_REFRESH_COOKIE_SECURE')
+    if _jwt_cookie_secure_env is not None and _jwt_cookie_secure_env.strip() != ''
+    else None
+)
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'SI-KKPRIS API',

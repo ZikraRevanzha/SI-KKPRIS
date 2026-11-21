@@ -1,0 +1,356 @@
+openapi: 3.0.3
+info:
+  title: SI-KKPRIS API
+  version: 1.0.0
+  description: REST API Sistem Informasi Pembiayaan dan Koperasi Syariah (SI-KKPRIS)
+    — Koperasi KKPRIS SMK Negeri 1 Kota Solok.
+paths:
+  /api/v1/auth/ganti-password/:
+    post:
+      operationId: auth_ganti_password
+      description: Memvalidasi password lama dan memperbarui password baru (minimal
+        8 karakter, hash PBKDF2).
+      summary: Ganti kata sandi pengguna aktif
+      tags:
+      - Autentikasi
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GantiPasswordInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GantiPasswordInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GantiPasswordInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PesanOutput'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Password lama salah atau validasi gagal.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Token tidak ada atau tidak valid.
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login
+      description: Memvalidasi kredensial (username atau Nomor Anggota) menggunakan
+        PBKDF2. Access token (10 menit) dikembalikan di body JSON, sedangkan refresh
+        token (30 menit) disimpan pada cookie httpOnly (SameSite=Strict, Path=/api/v1/auth/).
+      summary: Login pengguna dan terbitkan JWT
+      tags:
+      - Autentikasi
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginInputRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginOutput'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Validasi input gagal.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Kredensial tidak valid atau akun nonaktif.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Terlalu banyak percobaan login.
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout
+      description: Memasukkan refresh token dari cookie ke daftar blacklist, mencatat
+        LOGOUT di AuditTrailLog, serta menghapus cookie refresh token.
+      summary: Logout dan blacklist refresh token
+      tags:
+      - Autentikasi
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PesanOutput'
+          description: ''
+  /api/v1/auth/me/:
+    get:
+      operationId: auth_me
+      description: Mengembalikan identitas, peran, dan profil ringkas anggota bagi
+        pengguna yang sedang login.
+      summary: Ambil profil pengguna aktif
+      tags:
+      - Autentikasi
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PenggunaMe'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Token tidak ada atau tidak valid.
+  /api/v1/auth/refresh/:
+    post:
+      operationId: auth_refresh
+      description: Membaca refresh token dari cookie httpOnly, merotasi refresh token
+        baru, memasukkan refresh token lama ke blacklist, dan mengembalikan access
+        token baru.
+      summary: Perbarui access token melalui cookie refresh
+      tags:
+      - Autentikasi
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshOutput'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GalatSeragam'
+          description: Refresh token tidak ada, kedaluwarsa, atau diblacklist.
+components:
+  schemas:
+    GalatSeragam:
+      type: object
+      properties:
+        kode:
+          type: string
+          description: Kode galat terstandar.
+        pesan:
+          type: string
+          description: Pesan galat dalam Bahasa Indonesia.
+        detail:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Rincian galat per bidang input (kosong bila bukan galat validasi
+            field).
+      required:
+      - detail
+      - kode
+      - pesan
+    GantiPasswordInputRequest:
+      type: object
+      properties:
+        password_lama:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password_baru:
+          type: string
+          writeOnly: true
+          minLength: 8
+        konfirmasi_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - konfirmasi_password
+      - password_baru
+      - password_lama
+    LoginInputRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: 'Username pengguna atau Nomor Anggota (contoh: bendahara01
+            atau KKP-2026-001).'
+          maxLength: 50
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Kata sandi akun pengguna.
+      required:
+      - password
+      - username
+    LoginOutput:
+      type: object
+      properties:
+        access:
+          type: string
+          description: Access token JWT berumur 10 menit.
+        pengguna:
+          $ref: '#/components/schemas/PenggunaMe'
+      required:
+      - access
+      - pengguna
+    PenggunaMe:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        nama_lengkap:
+          type: string
+          readOnly: true
+        peran:
+          allOf:
+          - $ref: '#/components/schemas/PeranEnum'
+          readOnly: true
+        peran_label:
+          type: string
+          readOnly: true
+        is_aktif:
+          type: boolean
+          readOnly: true
+        anggota:
+          allOf:
+          - $ref: '#/components/schemas/ProfilAnggotaRingkas'
+          nullable: true
+          readOnly: true
+      required:
+      - anggota
+      - id
+      - is_aktif
+      - nama_lengkap
+      - peran
+      - peran_label
+      - username
+    PeranEnum:
+      enum:
+      - ANGGOTA
+      - BENDAHARA
+      - KETUA
+      type: string
+      description: |-
+        * `ANGGOTA` - Anggota
+        * `BENDAHARA` - Bendahara Koperasi
+        * `KETUA` - Ketua Koperasi
+    PesanOutput:
+      type: object
+      properties:
+        pesan:
+          type: string
+      required:
+      - pesan
+    ProfilAnggotaRingkas:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        no_anggota:
+          type: string
+          readOnly: true
+        nama:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        status_kepegawaian:
+          allOf:
+          - $ref: '#/components/schemas/StatusKepegawaianEnum'
+          readOnly: true
+      required:
+      - id
+      - nama
+      - no_anggota
+      - status
+      - status_kepegawaian
+    RefreshOutput:
+      type: object
+      properties:
+        access:
+          type: string
+          description: Access token JWT baru hasil penyegaran sesi.
+      required:
+      - access
+    StatusEnum:
+      enum:
+      - AKTIF
+      - PROSES_RESIGN
+      - NON_AKTIF_KELUAR
+      type: string
+      description: |-
+        * `AKTIF` - Aktif
+        * `PROSES_RESIGN` - Proses Resign
+        * `NON_AKTIF_KELUAR` - Non-Aktif Keluar
+    StatusKepegawaianEnum:
+      enum:
+      - PNS
+      - PPPK
+      - HONORER
+      - PENSIUNAN
+      - PINDAH_TUGAS
+      type: string
+      description: |-
+        * `PNS` - PNS
+        * `PPPK` - PPPK
+        * `HONORER` - Honorer
+        * `PENSIUNAN` - Pensiunan
+        * `PINDAH_TUGAS` - Pindah Tugas
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+tags:
+- name: Autentikasi
+  description: Login JWT, refresh cookie, logout, profil aktif, dan ganti password.
+- name: Dashboard
+  description: Ringkasan dashboard pengurus dan beranda anggota.
+- name: Anggota
+  description: Manajemen keanggotaan dan kliring pengunduran diri.
+- name: Simpanan
+  description: Transaksi dan saldo 5 skema simpanan.
+- name: Pembiayaan
+  description: Simulasi, pengajuan, agunan, persetujuan kas, dan realisasi.
+- name: Angsuran & Rekap
+  description: Angsuran, rekap potong gaji tanggal 24, dan notifikasi tagihan.
+- name: Laporan & Audit
+  description: Kuitansi PDF, laporan keuangan RAT, dan jejak audit sistem.
