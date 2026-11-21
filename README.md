@@ -106,3 +106,58 @@ Folder ini merupakan direktori utama tahap **Implementasi (Konstruksi Perangkat 
    ```powershell
    python manage.py runserver
    ```
+
+---
+
+## 🔌 REST API & Autentikasi JWT (Tahap 9A)
+
+Backend menyediakan REST API dengan prefix `/api/v1/` menggunakan **Django REST Framework**, **SimpleJWT** (*access token* 10 menit di body + *refresh token* 30 menit berotasi di cookie `httpOnly`, `SameSite=Strict`, `Path=/api/v1/auth/`), dan **drf-spectacular** (OpenAPI 3).
+
+### Menjalankan Server API
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+python manage.py check
+python manage.py migrate
+python manage.py seed_master --with-demo   # pastikan SEED_PASSWORD ada di backend/.env
+python manage.py runserver
+```
+
+### Mengambil Token & Menggunakan Endpoint Autentikasi
+
+1. **Login** (menerima `username` atau `no_anggota`, contoh `bendahara01` atau `KKP-2026-001`):
+   ```powershell
+   curl -i -c cookies.txt -X POST http://127.0.0.1:8000/api/v1/auth/login/ `
+     -H "Content-Type: application/json" `
+     -d '{"username":"bendahara01","password":"<SEED_PASSWORD>"}'
+   ```
+   Respons `200 OK` mengembalikan `access` dan objek `pengguna`, sekaligus menyetel cookie `kkpris_refresh` (`HttpOnly; SameSite=Strict; Path=/api/v1/auth/`).
+
+2. **Ambil Profil Aktif (`/api/v1/auth/me/`):**
+   ```powershell
+   curl http://127.0.0.1:8000/api/v1/auth/me/ `
+     -H "Authorization: Bearer <ACCESS_TOKEN>"
+   ```
+
+3. **Refresh Access Token (rotasi cookie & blacklist token lama):**
+   ```powershell
+   curl -i -b cookies.txt -c cookies.txt -X POST http://127.0.0.1:8000/api/v1/auth/refresh/
+   ```
+
+4. **Ganti Password:** `POST /api/v1/auth/ganti-password/` (`password_lama`, `password_baru`, `konfirmasi_password`) dengan header `Authorization: Bearer <ACCESS_TOKEN>`.
+
+5. **Logout (blacklist refresh token & hapus cookie):**
+   ```powershell
+   curl -i -b cookies.txt -c cookies.txt -X POST http://127.0.0.1:8000/api/v1/auth/logout/
+   ```
+
+### Dokumentasi Swagger UI & Skema OpenAPI
+
+- Atur `API_DOCS_ENABLED=True` pada `backend/.env` (hanya untuk pengembangan; baku `False` di produksi).
+- **Swagger UI:** `http://127.0.0.1:8000/api/docs/`
+- **Skema OpenAPI mentah:** `http://127.0.0.1:8000/api/schema/`
+- **Regenerasi berkas skema:**
+  ```powershell
+  python manage.py spectacular --file docs/openapi.yaml --validate
+  ```

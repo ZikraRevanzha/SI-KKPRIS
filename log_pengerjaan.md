@@ -334,3 +334,45 @@ docs(config): perbarui log pengerjaan tahap 8b
 ### 📌 Status & Rencana Selanjutnya
 * **Status:** Tahap 8B selesai 100% — `check`, `makemigrations --check --dry-run`, `grep float(` (kosong), `grep pymysql` (kosong), dan `test koperasi` (20 test) lulus pada MySQL 8.4 Laragon (`Ran 20 tests in 16.927s — OK`).
 * **Rencana Berikutnya:** Mulai **Tahap 9A** (Fondasi API: `Pengguna` custom `AbstractBaseUser`, DRF, JWT cookie, Swagger) di sesi percakapan baru (gunakan mode perencanaan sesuai `ROADMAP_PENGERJAAN.md`).
+
+---
+
+## 📅 21 November 2026 — Tahap 9A
+
+### 🎯 Fokus / Modul yang Dikerjakan
+* **Tahap 9A:** Fondasi REST API v1 (`/api/v1/`) dan autentikasi JWT: penambahan DRF, SimpleJWT (`token_blacklist`), dan `drf-spectacular`; konversi model `Pengguna` menjadi `AbstractBaseUser + PermissionsMixin` (`AUTH_USER_MODEL = 'koperasi.Pengguna'`); ekstraksi `koperasi/services/auth_service.py`; permission class per peran; 5 endpoint autentikasi JWT dengan *refresh token* pada cookie `httpOnly` + rotasi + blacklist; exception handler seragam Bahasa Indonesia; Swagger/OpenAPI (`backend/docs/openapi.yaml`); serta suite pengujian API.
+
+### 🛠️ Rincian Perubahan
+1. **Dependensi & Konfigurasi (`backend/requirements.txt`, `backend/.env.example`, `backend/si_kkpris/settings.py`):**
+   * Memasang dan mengunci versi stabil terbaru yang kompatibel dengan Django 5.2.19: `djangorestframework==3.18.3`, `djangorestframework-simplejwt==5.5.1`, `drf-spectacular==0.30.0`, dan `PyJWT==2.15.1`.
+   * Menambahkan `'rest_framework'`, `'rest_framework_simplejwt.token_blacklist'`, dan `'drf_spectacular'` ke `INSTALLED_APPS`.
+   * Mengonfigurasi `REST_FRAMEWORK` (JWTAuthentication, `IsAuthenticated`, `JSONRenderer` saja, `handler_galat_seragam`, `StandarPagination` page size 20, throttle `login`, `AutoSchema`, `COERCE_DECIMAL_TO_STRING=True`), `SIMPLE_JWT` (access 10 menit, refresh 30 menit, `ROTATE_REFRESH_TOKENS=True`, `BLACKLIST_AFTER_ROTATION=True`), pengaturan cookie refresh, dan `SPECTACULAR_SETTINGS` (`SI-KKPRIS API` v1.0.0) berbasis env `API_DOCS_ENABLED` (default `False`; ditambahkan ke `.env.example` dan `.env` lokal atas persetujuan pengguna). Tanpa `django-cors-headers`.
+2. **Model `Pengguna` Custom, Migrasi, DDL & Service (`models.py`, `0002_pengguna_custom_user.py`, `admin.py`, `seed_master.py`, `database/02_DDL_MySQL_SI-KKPRIS.sql`, `services/auth_service.py`, `controllers/auth_controller.py`):**
+   * Mengubah `Pengguna` menjadi `AbstractBaseUser + PermissionsMixin` dengan `PenggunaManager(BaseUserManager)`, `AUTH_USER_MODEL = 'koperasi.Pengguna'`, kolom `password` (migrasi `RenameField` dari `password_hash`), `last_login`, `is_staff`, `is_superuser`, `groups`, `user_permissions`, serta mempertahankan `is_aktif` + properti `is_active`.
+   * Mereset database lokal `si_kkpris` atas persetujuan pengguna dan menjalankan `migrate` (seluruh migrasi termasuk `0002_pengguna_custom_user` dan `token_blacklist` berhasil).
+   * Menyinkronkan `database/02_DDL_MySQL_SI-KKPRIS.sql`, `admin.py` (`PenggunaAdmin`), dan `seed_master.py`.
+   * Mengekstrak logika autentikasi & audit trail ke `backend/koperasi/services/auth_service.py` dan mendelegasikan `AuthController` lama ke service yang sama.
+3. **Fondasi API v1, Permission, Endpoint Auth & OpenAPI (`koperasi/api/v1/*`, `si_kkpris/urls.py`, `backend/docs/openapi.yaml`):**
+   * Membuat `exceptions.py` (`{kode, pesan, detail}` Bahasa Indonesia), `pagination.py`, `permissions.py` (`IsAnggota`, `IsBendahara`, `IsKetua`, `IsBendaharaAtauKetua`), `throttling.py` (`LoginRateThrottle` berbasis `ambil_ip_klien`), `serializers/auth_serializers.py`, `views/auth_views.py`, dan `urls.py`.
+   * Menyediakan 5 endpoint: `POST /api/v1/auth/login/`, `POST /api/v1/auth/refresh/`, `POST /api/v1/auth/logout/`, `GET /api/v1/auth/me/`, dan `POST /api/v1/auth/ganti-password/`.
+   * Mendaftarkan `/api/schema/` dan `/api/docs/` hanya saat `API_DOCS_ENABLED=True` dan menghasilkan `backend/docs/openapi.yaml` (`--validate --fail-on-warn` lulus tanpa peringatan).
+4. **Pengujian & Dokumentasi (`koperasi/test_api_auth.py`, `README.md`):**
+   * Menambahkan 13 test API di `backend/koperasi/test_api_auth.py` mencakup login (username & `no_anggota`), gagal login, atribut cookie (`httpOnly`, `SameSite=Strict`, `Path`, `Secure`), refresh & rotasi, penolakan token lama (blacklist), logout, `/me/`, `/ganti-password/`, 401 tanpa token, 403 peran salah pada keempat permission class, throttle 429, `AuditTrailLog`, dan aktivasi `/api/schema/` + `/api/docs/`.
+   * Menambahkan panduan singkat REST API di `README.md`.
+
+### 💬 Pesan Commit Terkait
+```text
+chore(config): tambah DRF simplejwt dan drf-spectacular
+refactor(auth): ubah Pengguna dan ekstrak service
+feat(api): tambah fondasi API v1 dan auth JWT
+test(api): tambah tes autentikasi JWT dan izin
+docs(api): tambah panduan API dan log tahap 9a
+```
+
+### 🔎 Temuan & PENDING Baru
+* `python manage.py seed_master --with-demo` pada database lokal `si_kkpris` yang baru direset belum selesai karena `SEED_PASSWORD` belum diisi pada `backend/.env` lokal (pengguna perlu menambahkan `SEED_PASSWORD` di `backend/.env` lalu menjalankan `python manage.py seed_master --with-demo`).
+* Tidak ada `PND-xx` baru; aturan bisnis tidak diubah.
+
+### 📌 Status & Rencana Selanjutnya
+* **Status:** Tahap 9A selesai 100% — `check` (0 isu), `makemigrations --check --dry-run` (`No changes detected`), `spectacular --file docs/openapi.yaml --validate --fail-on-warn` (lulus), dan `test koperasi` (33 test: 20 lama + 13 API baru) lulus pada MySQL 8.4 Laragon.
+* **Rencana Berikutnya:** Mulai **Tahap 9B** (Scaffold aplikasi React `web/`: Vite + TypeScript + Tailwind v4 + API client + auth) di sesi percakapan baru (gunakan mode perencanaan sesuai `ROADMAP_PENGERJAAN.md`).
