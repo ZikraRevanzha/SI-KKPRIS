@@ -450,10 +450,10 @@ class RekapNotifikasiController:
                 idx,
                 d.anggota.no_anggota,
                 d.anggota.nama,
-                float(d.nominal_simpanan_wajib),
-                float(d.nominal_angsuran),
-                float(d.nominal_simpanan_sukarela),
-                float(d.subtotal_potongan),
+                d.nominal_simpanan_wajib,
+                d.nominal_angsuran,
+                d.nominal_simpanan_sukarela,
+                d.subtotal_potongan,
                 d.get_status_potongan_display(),
             ])
             curr_row = 4 + idx
@@ -469,10 +469,10 @@ class RekapNotifikasiController:
             '',
             '',
             'TOTAL KESELURUHAN',
-            float(rekap.total_simpanan_wajib),
-            float(rekap.total_angsuran),
-            float(total_toko),
-            float(rekap.total_tagihan),
+            rekap.total_simpanan_wajib,
+            rekap.total_angsuran,
+            total_toko,
+            rekap.total_tagihan,
             rekap.get_status_rekap_display(),
         ])
         for col_idx in range(1, len(headers) + 1):

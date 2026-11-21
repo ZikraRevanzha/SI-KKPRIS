@@ -1111,6 +1111,65 @@ class SIKKPRISModelsTestCase(TestCase):
         )
         self.assertEqual(mutasi.nominal, Decimal('70000.00'))
 
+    def test_15_ekspor_excel_presisi_numerik_decimal(self):
+        """Memastikan ekspor Excel (simpanan, pembiayaan, rekap, laporan) menulis sel numerik akurat dari Decimal."""
+        from io import BytesIO
+        import openpyxl
+
+        call_command('seed_master', '--with-demo', verbosity=0)
+        self.client.post('/login/', {'username': 'bendahara01', 'password': self.TEST_SEED_PASSWORD})
+
+        # 1. Ekspor Simpanan
+        resp_smp = self.client.get('/simpanan/ekspor/')
+        self.assertEqual(resp_smp.status_code, 200)
+        wb_smp = openpyxl.load_workbook(BytesIO(resp_smp.content))
+        ws_smp = wb_smp.active
+        no_kui_row = ws_smp.cell(row=5, column=2).value
+        ts_db = TransaksiSimpanan.objects.get(no_kuitansi=no_kui_row)
+        cell_nom = ws_smp.cell(row=5, column=9)
+        self.assertIsInstance(cell_nom.value, (int, float))
+        self.assertEqual(cell_nom.number_format, '#,##0.00')
+        self.assertEqual(Decimal(str(cell_nom.value)).quantize(Decimal('0.01')), ts_db.nominal)
+
+        # 2. Ekspor Pembiayaan
+        resp_pmb = self.client.get('/pembiayaan/ekspor/')
+        self.assertEqual(resp_pmb.status_code, 200)
+        wb_pmb = openpyxl.load_workbook(BytesIO(resp_pmb.content))
+        ws_pmb = wb_pmb.active
+        no_pmb_row = ws_pmb.cell(row=5, column=2).value
+        pmb_db = Pembiayaan.objects.get(no_pembiayaan=no_pmb_row)
+        cell_pokok = ws_pmb.cell(row=5, column=8)
+        cell_kewajiban = ws_pmb.cell(row=5, column=10)
+        self.assertIsInstance(cell_pokok.value, (int, float))
+        self.assertEqual(cell_pokok.number_format, '#,##0.00')
+        self.assertEqual(Decimal(str(cell_pokok.value)).quantize(Decimal('0.01')), pmb_db.harga_pokok)
+        self.assertEqual(Decimal(str(cell_kewajiban.value)).quantize(Decimal('0.01')), pmb_db.total_kewajiban)
+
+        # 3. Ekspor Rekap Potong Gaji
+        rekap = RekapPotongGaji.objects.get(periode_bulan='2026-11')
+        resp_rkp = self.client.get(f'/rekap-potong-gaji/{rekap.id}/ekspor/?format=xlsx')
+        self.assertEqual(resp_rkp.status_code, 200)
+        wb_rkp = openpyxl.load_workbook(BytesIO(resp_rkp.content))
+        ws_rkp = wb_rkp.active
+        cell_total_rkp = ws_rkp.cell(row=ws_rkp.max_row, column=7)
+        self.assertIsInstance(cell_total_rkp.value, (int, float))
+        self.assertEqual(cell_total_rkp.number_format, '#,##0.00')
+        self.assertEqual(Decimal(str(cell_total_rkp.value)).quantize(Decimal('0.01')), rekap.total_tagihan)
+
+        # 4. Ekspor Laporan Keuangan & Sheet Neraca/SHU
+        resp_lap = self.client.get('/laporan-keuangan/ekspor/?tab=KAS_MASUK_KELUAR&periode=TAHUNAN&tahun=2026&format=xlsx')
+        self.assertEqual(resp_lap.status_code, 200)
+        wb_lap = openpyxl.load_workbook(BytesIO(resp_lap.content))
+        ws_lap = wb_lap.worksheets[0]
+        cell_saldo_akhir = ws_lap.cell(row=ws_lap.max_row, column=8)
+        self.assertIsInstance(cell_saldo_akhir.value, (int, float))
+        self.assertEqual(cell_saldo_akhir.number_format, '#,##0.00')
+
+        ws_rat = wb_lap.worksheets[1]
+        cell_rat_val = ws_rat.cell(row=4, column=2)
+        self.assertIsInstance(cell_rat_val.value, (int, float))
+        self.assertEqual(cell_rat_val.number_format, '#,##0.00')
+
 
 
 

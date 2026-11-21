@@ -459,9 +459,9 @@ class LaporanKeuangan:
                     b['no_referensi'],
                     b['kategori'],
                     b['keterangan'],
-                    float(b['debit']),
-                    float(b['kredit']),
-                    float(b['saldo']),
+                    b['debit'],
+                    b['kredit'],
+                    b['saldo'],
                 ])
                 curr_row = 4 + idx
                 for col_idx in range(1, len(headers) + 1):
@@ -477,9 +477,9 @@ class LaporanKeuangan:
                 '',
                 '',
                 'TOTAL AKUMULASI PERIODE',
-                float(data_laporan['kompilasi']['total_debit']),
-                float(data_laporan['kompilasi']['total_kredit']),
-                float(data_laporan['kompilasi']['saldo_akhir']),
+                data_laporan['kompilasi']['total_debit'],
+                data_laporan['kompilasi']['total_kredit'],
+                data_laporan['kompilasi']['saldo_akhir'],
             ])
             for col_idx in range(1, len(headers) + 1):
                 c = ws.cell(row=total_row, column=col_idx)
@@ -506,7 +506,8 @@ class LaporanKeuangan:
                 ('Potongan Margin Pelunasan Dipercepat (Muqashah)', neraca['total_muqashah']),
                 ('Sisa Hasil Usaha (SHU) Bersih Tahun Buku', neraca['shu_bersih']),
             ]:
-                ws_rat.append([k_label, float(k_val)])
+                ws_rat.append([k_label, k_val])
+                ws_rat.cell(row=ws_rat.max_row, column=2).number_format = '#,##0.00'
 
             for sheet in (ws, ws_rat):
                 for col in sheet.columns:

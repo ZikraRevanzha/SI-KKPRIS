@@ -510,9 +510,9 @@ def ekspor_simpanan_excel_view(request):
             ts.jenis_simpanan.nama,
             ts.get_jenis_transaksi_display(),
             ts.get_metode_bayar_display(),
-            float(ts.nominal),
-            float(saldo_sblm),
-            float(ts.saldo_sesudah),
+            ts.nominal,
+            saldo_sblm,
+            ts.saldo_sesudah,
             ts.keterangan or '-',
         ]
         ws.append(row_data)
