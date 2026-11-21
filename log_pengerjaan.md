@@ -1,4 +1,4 @@
-﻿# ðŸ“‹ LOG PENGERJAAN HARIAN PROYEK SI-KKPRIS
+# ðŸ“‹ LOG PENGERJAAN HARIAN PROYEK SI-KKPRIS
 
 **Nama Proyek:** Sistem Informasi Pembiayaan dan Koperasi Syariah (SI-KKPRIS)  
 **Studi Kasus:** Koperasi KKPRIS SMK Negeri 1 Kota Solok  
@@ -214,3 +214,63 @@ Persiapan Langkah 0 roadmap: restrukturisasi repository dan lingkungan kerja.
 
 ### ðŸ“Œ Status & Rencana Selanjutnya
 * Langkah 0 selesai; berikutnya Tahap 8A di percakapan baru. PND-01â€“04 dan PND-12 menunggu jawaban mitra.
+
+---
+
+## 📅 21 November 2026
+
+### 🎯 Fokus / Modul yang Dikerjakan
+Aturan responsif mobile untuk aplikasi `web/` (belum ada kode; dokumen saja).
+
+### 🛠️ Rincian Perubahan
+* `AGENTS.md`: tambah Bagian 7.F (mobile-first, viewport, drawer, tabel menjadi kartu, area sentuh 44 px, formulir, dialog, verifikasi 375/768/1280 px).
+* `docs/prompt_antigravity_v2.md`: Prompt 9C butir 5 merujuk 7.F.
+
+### 💬 Pesan Commit Terkait
+`docs(design): tambah aturan responsif mobile`
+
+### 🔎 Temuan & PENDING Baru
+* Template Django lama (`frontend/`) dibekukan; hanya punya satu media query (1100px). Tidak diubah sesuai keputusan pengguna.
+
+### 📌 Status & Rencana Selanjutnya
+* Aturan diterapkan saat Tahap 9B/9C.
+
+---
+
+## 📅 21 November 2026 — Tahap 8A
+
+### 🎯 Fokus / Modul yang Dikerjakan
+* **Tahap 8A:** Penandaan aturan bisnis berstatus `PENDING` (`PND-01` s.d. `PND-10`), pemindahan margin sementara ke konfigurasi environment (`MARGIN_PERSEN_SEMENTARA`), serta penggantian data seed & pengujian ke data dummy dengan password dari env (`SEED_PASSWORD`). Mengikuti Addendum Tahap 8 (template Django lama dibekukan, tidak diubah).
+
+### 🛠️ Rincian Perubahan
+1. **Penandaan `# PENDING PND-xx` (`models.py`, `pembiayaan_controller.py`, `laporan_bukti_controller.py`):**
+   * Menandai `PND-01` (margin sementara + perjelas docstring `Pembiayaan.hitungSimulasiMarginFlat` menjadi per bulan flat), `PND-02` (Hawalah memakai rumus sama dengan akad lain), `PND-04` (limit per anggota dan batas pembiayaan aktif belum divalidasi), `PND-05` (jenis & syarat agunan), `PND-06` (aturan pembulatan), `PND-07` (awal angsuran bulan berikutnya tanggal 24), `PND-08` (`PembayaranAngsuran.potongan_margin`), `PND-09` (`LaporanKeuangan.hitungNeracaDanSHU` & alokasi SHU), dan `PND-10` (`KanalNotifikasiChoices`).
+2. **Pemindahan Margin Sementara ke Environment (`settings.py`, `.env.example`, `pembiayaan_controller.py`, `seed_master.py`, `tests.py`):**
+   * Menambahkan `MARGIN_PERSEN_SEMENTARA` di `backend/si_kkpris/settings.py` (dibaca dari env, default `Decimal('1.00')`) dan `backend/.env.example`.
+   * Mengganti `PembiayaanController.DEFAULT_MARGIN_PERSEN` menjadi `PembiayaanController.ambilMarginSementara()` yang membaca `settings.MARGIN_PERSEN_SEMENTARA`; `seed_master.py` juga membaca dari `settings.MARGIN_PERSEN_SEMENTARA`.
+   * Menambahkan `test_11_simulasi_pakai_margin_sementara_dari_settings` dengan `@override_settings`.
+   * Melewati perubahan template `ajukan_pembiayaan.html` dan `detail_pembiayaan.html` sesuai Addendum Tahap 8.
+3. **Data Seed Dummy & `SEED_PASSWORD` (`settings.py`, `.env.example`, `seed_master.py`, `tests.py`):**
+   * Mengganti seluruh nama asli/mirip nyata, username NIP 18 digit, NIK (`137201...`/`137202...`), dan nomor HP di `seed_master.py` dan `tests.py` menjadi data dummy (`ketua01`, `bendahara01`, `anggota01`–`anggota03`, NIK `0000000000000001`–`0000000000000009`).
+   * Membaca password akun seed dari env `SEED_PASSWORD` (`settings.SEED_PASSWORD`), menghapus password hardcoded `'Kkpris2026!'` dari `seed_master.py`, dan menambahkan `SEED_PASSWORD` ke `backend/.env.example`.
+   * Menambahkan `test_12_seed_master_wajib_seed_password_dari_env` untuk memastikan `seed_master` menolak berjalan bila `SEED_PASSWORD` kosong.
+
+### 💬 Pesan Commit Terkait
+```text
+docs(pembiayaan): tandai aturan yang pending
+refactor(config): pindah margin sementara ke env
+chore(db): ganti data seed dengan data dummy
+```
+
+### 🔎 Temuan & PENDING Baru
+* **`PND-08` (`PembayaranAngsuran.potongan_margin` / muqashah):** Istilah *pelunasan dipercepat (muqashah)* tercantum di `SRS SI-KKPRIS (Versi 4.0).docx` pada `FR-PMB-07`, namun **tidak tercantum** di catatan wawancara (`Wawancara.txt`) dan belum ada rumus/ketentuan potongan dari mitra. Kolom dipertahankan dan ditandai `# PENDING PND-08`.
+* **Password hardcoded sebelumnya di `seed_master.py`:** Sebelumnya `default_pw = make_password('Kkpris2026!')` tertulis langsung di kode (kini sudah dipindahkan ke env `SEED_PASSWORD`).
+* **Temuan di luar lingkup Tahap 8A:**
+  * Password bawaan `'Kkpris2026!'` masih hardcoded di `backend/koperasi/controllers/anggota_controller.py:125` (untuk pendaftaran anggota baru tanpa input password).
+  * Tombol demo di `frontend/templates/auth/login.html` masih memakai username lama (`bendahara`, `ketua`) dan password `'Kkpris2026!'`, serta teks di `frontend/templates/anggota/data_anggota.html:329` masih menyebut `Kkpris2026!` (tidak diubah karena template dibekukan sesuai Addendum Tahap 8).
+  * Alokasi SHU `40% / 25% / 20% / 15%` di `LaporanKeuangan.hitungNeracaDanSHU` tidak memiliki sumber di wawancara maupun SRS v4.0 (ditandai `# PENDING PND-09`).
+  * `backend/.env` lokal tidak disentuh sesuai aturan; pengguna perlu menambahkan `SEED_PASSWORD` (dan opsional `MARGIN_PERSEN_SEMENTARA`) ke `backend/.env` sebelum menjalankan `python manage.py seed_master`.
+
+### 📌 Status & Rencana Selanjutnya
+* **Status:** Tahap 8A selesai 100% — `check`, `makemigrations --check --dry-run`, dan `test koperasi` (12 test) lulus pada MySQL 8.4 Laragon (`Ran 12 tests in 11.895s — OK`).
+* **Rencana Berikutnya:** Mulai **Tahap 8B** (perbaikan teknis backend) di sesi percakapan baru.
