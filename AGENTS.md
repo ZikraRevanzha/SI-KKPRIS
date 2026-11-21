@@ -10,9 +10,9 @@ Aturan wajib bagi AI Agent pada setiap sesi pengerjaan **Sistem Informasi Pembia
 2. **Urutan sumber kebenaran:** hasil wawancara → SRS v4.0 → ERD/Class Diagram → kode. Jika kode bertentangan, kodenya yang salah.
 3. **Skema OpenAPI adalah sumber kebenaran kontrak API.** Frontend tidak menebak bentuk respons; tipe TypeScript dihasilkan dari skema.
 4. **Kerjakan hanya yang diminta.** Tidak menambah fitur, mengubah perilaku bisnis, atau merombak arsitektur di luar tahap yang diminta. Temuan lain dicatat di bagian "Temuan" pada `log_pengerjaan.md`.
-5. **Lindungi data.** Jangan membaca isi, mengubah, atau meng-commit `.env*`, `.venv/`, `venv/`, `node_modules/`, `dist/`, isi `media/`, dump database berisi data asli, maupun `.zip`. Seed dan test memakai data dummy.
+5. **Lindungi data.** Jangan meng-commit `.env*`, `.venv/`, `venv/`, `node_modules/`, `dist/`, isi `media/`, dump database berisi data asli, maupun `.zip`. Khusus `.env`: jangan mengubah berkas `.env` tanpa menanyakan persetujuan pengguna terlebih dahulu beserta alasan mengapa perlu diubah; jangan membaca atau menampilkan nilai rahasia di luar kebutuhan yang disetujui. Seed dan test memakai data dummy.
 6. **Bahasa:** komunikasi, komentar, dan pesan commit dalam Bahasa Indonesia; identifier mengikuti konvensi yang ada (backend: Indonesia; kode frontend: nama komponen dan fungsi boleh Inggris, teks yang tampil ke pengguna wajib Indonesia).
-7. **Jika ragu, berhenti dan tanya pengguna.** Wajib berhenti dan meminta persetujuan sebelum: menghapus/mereset database, mengubah model pengguna, menghapus berkas dalam jumlah besar, atau `git push` ke selain `main`.
+7. **Jika ragu, berhenti dan tanya pengguna.** Wajib berhenti dan meminta persetujuan sebelum: mengubah berkas `.env` (jelaskan alasannya terlebih dahulu), menghapus/mereset database, mengubah model pengguna, menghapus berkas dalam jumlah besar, atau `git push` ke selain `main`.
 
 ---
 
