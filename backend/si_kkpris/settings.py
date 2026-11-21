@@ -22,14 +22,44 @@ if not _env_path.exists():
     _env_path = PROJECT_ROOT / '.env'
 load_dotenv(_env_path)
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv(
-    'SECRET_KEY',
-    'django-insecure-si-kkpris-smkn1-solok-dev-key-2026'
-)
+def _env_bool(nama: str, default: bool = False, getter=os.getenv) -> bool:
+    nilai = getter(nama)
+    if nilai is None or nilai.strip() == '':
+        return default
+    return nilai.strip().lower() in ('true', '1', 'yes')
 
+
+def _resolusi_konfigurasi_keamanan(getter=os.getenv) -> dict:
+    debug = _env_bool('DEBUG', default=False, getter=getter)
+    secret_key = (getter('SECRET_KEY') or '').strip()
+    if not secret_key:
+        raise ImproperlyConfigured(
+            'Environment variable SECRET_KEY wajib diatur di environment atau backend/.env.'
+        )
+    default_https = not debug
+    return {
+        'DEBUG': debug,
+        'SECRET_KEY': secret_key,
+        'SESSION_COOKIE_SECURE': _env_bool(
+            'SESSION_COOKIE_SECURE', default=default_https, getter=getter
+        ),
+        'CSRF_COOKIE_SECURE': _env_bool(
+            'CSRF_COOKIE_SECURE', default=default_https, getter=getter
+        ),
+        'SECURE_SSL_REDIRECT': _env_bool(
+            'SECURE_SSL_REDIRECT', default=default_https, getter=getter
+        ),
+    }
+
+
+# SECURITY WARNING: keep the secret key used in production secret!
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
+_keamanan = _resolusi_konfigurasi_keamanan()
+DEBUG = _keamanan['DEBUG']
+SECRET_KEY = _keamanan['SECRET_KEY']
+SESSION_COOKIE_SECURE = _keamanan['SESSION_COOKIE_SECURE']
+CSRF_COOKIE_SECURE = _keamanan['CSRF_COOKIE_SECURE']
+SECURE_SSL_REDIRECT = _keamanan['SECURE_SSL_REDIRECT']
 
 ALLOWED_HOSTS = [
     host.strip()

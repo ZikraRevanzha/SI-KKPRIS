@@ -1285,6 +1285,44 @@ class SIKKPRISModelsTestCase(TestCase):
             ['django.contrib.auth.hashers.PBKDF2PasswordHasher'],
         )
 
+    def test_19_konfigurasi_debug_dan_secret_key_wajib_env(self):
+        """Memastikan DEBUG default False, SECRET_KEY wajib dari env, dan flag HTTPS aktif saat DEBUG=False."""
+        from django.core.exceptions import ImproperlyConfigured
+        from si_kkpris.settings import _resolusi_konfigurasi_keamanan
+
+        # Tanpa SECRET_KEY & DEBUG tidak diset (default False) -> ImproperlyConfigured
+        with self.assertRaises(ImproperlyConfigured):
+            _resolusi_konfigurasi_keamanan(getter=lambda k: None)
+
+        # DEBUG default False -> cookie secure & SSL redirect aktif otomatis
+        prod_cfg = _resolusi_konfigurasi_keamanan(
+            getter=lambda k: {'SECRET_KEY': 'kunci-uji-produksi'}.get(k)
+        )
+        self.assertFalse(prod_cfg['DEBUG'])
+        self.assertTrue(prod_cfg['SESSION_COOKIE_SECURE'])
+        self.assertTrue(prod_cfg['CSRF_COOKIE_SECURE'])
+        self.assertTrue(prod_cfg['SECURE_SSL_REDIRECT'])
+
+        # Override lewat env tetap dihormati saat DEBUG=False
+        prod_override = _resolusi_konfigurasi_keamanan(
+            getter=lambda k: {
+                'SECRET_KEY': 'kunci-uji-produksi',
+                'DEBUG': 'False',
+                'SECURE_SSL_REDIRECT': 'False',
+            }.get(k)
+        )
+        self.assertFalse(prod_override['SECURE_SSL_REDIRECT'])
+        self.assertTrue(prod_override['SESSION_COOKIE_SECURE'])
+
+        # Saat DEBUG=True (lokal) -> tidak memaksa HTTPS
+        dev_cfg = _resolusi_konfigurasi_keamanan(
+            getter=lambda k: {'SECRET_KEY': 'kunci-uji-lokal', 'DEBUG': 'True'}.get(k)
+        )
+        self.assertTrue(dev_cfg['DEBUG'])
+        self.assertFalse(dev_cfg['SESSION_COOKIE_SECURE'])
+        self.assertFalse(dev_cfg['CSRF_COOKIE_SECURE'])
+        self.assertFalse(dev_cfg['SECURE_SSL_REDIRECT'])
+
 
 
 
