@@ -422,3 +422,52 @@ docs(web): tambah dokumentasi web dan log tahap 9b
 ### 📌 Status & Rencana Selanjutnya
 * **Status:** Tahap 9B selesai — `npm run gen:api`, `npm run lint` (0 error, 0 warning), `npm run typecheck` (lulus), `npm run test` (3 file, 16 test lulus), `npm run build` (`✓ built`), serta verifikasi proxy live Vite → Django lulus.
 * **Rencana Berikutnya:** Mulai **Tahap 9C** (Design system 60-30-10, `docs/design-system.md`, komponen UI, AppShell, Login, Dashboard Pengurus, dan Beranda Anggota + 2 endpoint ringkasan) di sesi percakapan baru.
+
+---
+
+## 📅 21 November 2026 — Tahap 9C
+
+### 🎯 Fokus / Modul yang Dikerjakan
+* **Tahap 9C:** Design System 60-30-10 (`@theme` Tailwind v4 + `docs/design-system.md`), pustaka komponen UI dasar (`web/src/components/ui/`), kerangka tata letak responsif berbasis peran (`AppShell`, `SidebarNav`, `Topbar`, `navigation.ts`), ekstraksi `dashboard_service.py` + 2 endpoint read-only (`GET /api/v1/dashboard/ringkasan/` & `GET /api/v1/anggota/saya/ringkasan/`), regenerasi OpenAPI & `schema.d.ts`, serta implementasi 3 halaman wireframe pertama (**Login**, **Dashboard Pengurus**, dan **Beranda Anggota**).
+
+### 🛠️ Rincian Perubahan
+1. **Backend Service & Endpoint Ringkasan (`dashboard_service.py`, `auth_controller.py`, `dashboard_serializers.py`, `dashboard_views.py`, `api/v1/urls.py`, `test_api_dashboard.py`, `docs/openapi.yaml`):**
+   * Mengekstrak agregasi Dashboard Pengurus dan Beranda Anggota dari `auth_controller.py` ke `backend/koperasi/services/dashboard_service.py` sebagai sumber tunggal logika tanpa mengubah aturan bisnis maupun template MVT lama.
+   * Menambahkan 2 endpoint read-only: `GET /api/v1/dashboard/ringkasan/` (`IsBendaharaAtauKetua`, `operation_id='dashboard_ringkasan'`) dan `GET /api/v1/anggota/saya/ringkasan/` (`IsAnggota`, `operation_id='anggota_saya_ringkasan'`) dengan seluruh field nominal uang sebagai string desimal `DecimalField(max_digits=15, decimal_places=2, coerce_to_string=True)`.
+   * Menambahkan 7 test API di `backend/koperasi/test_api_dashboard.py` (200 Bendahara/Ketua/Anggota, 401 tanpa token, 403 peran lain, format uang string, kasus anggota baru kosong).
+   * Meregenerasi `backend/docs/openapi.yaml` (`--validate --fail-on-warn`) dan menyinkronkan `web/src/api/schema.d.ts` via `npm run gen:api`.
+2. **Design System & Token Tema (`docs/design-system.md`, `web/index.html`, `web/src/styles/index.css`):**
+   * Mendefinisikan token `@theme` Tailwind v4 untuk palet 60-30-10 (`#F6F2EA` krem / `#FFFFFF` permukaan 60%, `#14452F` hijau tua 30%, `#D99A1E` aksen emas 10% dengan teks gelap `#1F2A24`), warna status terpisah (sukses, peringatan burnt-orange, bahaya, info), tipografi `IBM Plex Sans`, bayangan tipis tunggal, dan animasi loading CSS murni (`transform`/`opacity`, `prefers-reduced-motion`).
+   * Menambahkan `<meta name="text-scale" content="scale" />` di `web/index.html` tanpa override `font-size` pada `:root`/`html`, gaya `<dialog>` modal & drawer native, serta tabel responsif berbasis `@container` query.
+   * Menulis dokumentasi lengkap beserta tabel rasio kontras WCAG 2.1 AA terhitung di `docs/design-system.md`.
+3. **Komponen UI Dasar & Layout Responsif (`web/src/components/ui/*`, `web/src/components/layout/*`):**
+   * Membangun `Button` (loading + `disabled` + `Spinner`), `Field`, `Input`, `Select`, `Textarea`, `Card`, `Badge` (status selalu dengan ikon `lucide-react` + teks), `Table` (responsif kartu bertumpuk di layar sempit, angka rata kanan `tabular-nums`), `Dialog` (`<dialog>` native + fallback light-dismiss koordinat Safari), `ConfirmDialog`, `ToastProvider` + `useToast`, `Skeleton`, `Spinner`, `TopProgress`, `ProgressBar`, `useDelayedLoading` (±200 ms tunda / ±400 ms min tampil), `EmptyState`, `ErrorState`, dan `PageHeader`.
+   * Membangun `navigation.ts` (menu per peran `BENDAHARA` 8 item, `KETUA` 7 item, `ANGGOTA` 5 item), `SidebarNav.tsx`, `Topbar.tsx`, dan `AppShell.tsx` (tautan *"Lompat ke konten utama"*, sidebar tetap mulai `lg`, drawer `<dialog>` native di bawah `lg`, indikator menu aktif aksen emas).
+4. **3 Halaman Utama & Pengujian Frontend (`web/src/features/*`, `web/src/app/*`, `web/src/test/*`):**
+   * Memperbarui `LoginPage.tsx` (+ `LoginIdentitasPanel.tsx`): React Hook Form + Zod, tanpa checkbox *"Ingat saya"* sesuai keputusan pengguna, tombol tampil/sembunyikan kata sandi, dialog bantuan lupa kata sandi, galat server `role="alert"`, dan tombol loading `"Masuk…"`.
+   * Membangun `DashboardPengurusPage.tsx` (+ `DashboardPanels.tsx`, `StatCard.tsx`, `DashboardSkeleton.tsx`, `useDashboardRingkasan.ts`) dan `BerandaAnggotaPage.tsx` (+ `StatusPembiayaanCard.tsx`, `useBerandaAnggotaRingkasan.ts`) lengkap dengan 4 keadaan (memuat skeleton, kosong, galat `"Coba lagi"`, dan berhasil).
+   * Memperbarui `routes.tsx` (redirect `/` sesuai peran ke `/dashboard` atau `/beranda`, `ModulTerjadwalPage` terproteksi `RoleRoute` untuk modul Tahap 10–14A, penghapusan `BerandaSementaraPage.tsx`), `guards.tsx`, `providers.tsx`, `ForbiddenPage.tsx`, dan `NotFoundPage.tsx`.
+   * Menambahkan 13 unit test baru (`button.test.tsx`, `login.test.tsx`, `navigation.test.tsx`, `dashboard.test.tsx`) sehingga total menjadi 7 file / 29 test lulus.
+
+### 💬 Pesan Commit Terkait
+```text
+refactor(service): ekstrak service ringkasan dashboard
+feat(api): tambah endpoint ringkasan dashboard
+test(api): tambah tes endpoint dashboard dan beranda
+docs(design): tambah panduan design system dan tema
+feat(ui): tambah komponen dasar dan AppShell
+feat(web): tambah halaman login dashboard dan beranda
+test(web): tambah tes form login menu peran dan UI
+docs(web): perbarui log pengerjaan tahap 9c
+```
+
+### 🔎 Temuan & PENDING Baru
+* **Resolusi pertentangan skill vs `AGENTS.md` (Bagian 9.8):** `modern-web-guidance/spinner` menyarankan memperlambat putaran 6 detik pada `prefers-reduced-motion: reduce`, sedangkan `AGENTS.md` 7.D mewajibkan spinner menjadi teks `"Memuat…"` tanpa gerak (yang diikuti: `AGENTS.md` 7.D). `modern-web-guidance/light-dismiss-a-dialog` mencontohkan `backdrop-filter: blur(2px)`, sedangkan `AGENTS.md` 7.B melarang kaca buram (yang diikuti: `AGENTS.md` 7.B).
+* **Audit `web-design-guidelines`:** Ditiadakan sesuai keputusan pengguna.
+* **Verifikasi browser 375/768/1280 px & keyboard:** Subagent browser Chrome kembali terblokir karena *remote debugging* Chrome (`DevToolsActivePort`) tidak aktif pada lingkungan lokal; verifikasi visual responsif & login langsung di browser perlu dijalankan oleh pengguna.
+* **Ukuran bundle produksi:** `vite build` mencatat chunk utama `index-*.js` sebesar `517,89 kB` (gzip `158,41 kB`); dicatat sebagai temuan untuk dipertimbangkan *code-splitting* rute saat modul Tahap 10–14A bertambah.
+* Tidak ada `PND-xx` baru; aturan bisnis tidak diubah.
+
+### 📌 Status & Rencana Selanjutnya
+* **Status:** Tahap 9C selesai — Backend: `check` (0 isu), `makemigrations --check --dry-run` (bersih), `spectacular --validate --fail-on-warn` (lulus), `test koperasi` (40 test lulus di MySQL). Frontend: `npm run gen:api` (sinkron), `lint` (0 error/warning), `typecheck` (lulus), `test` (7 file, 29 test lulus), `build` (`✓ built`).
+* **Rencana Berikutnya:** Evaluasi **Gerbang 1** sesuai `ROADMAP_PENGERJAAN.md`, lalu lanjut **Tahap 10** (Modul Anggota & Kliring Resign — backend dulu, kemudian frontend) di sesi baru.
