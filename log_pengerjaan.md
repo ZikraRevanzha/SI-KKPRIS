@@ -376,3 +376,49 @@ docs(api): tambah panduan API dan log tahap 9a
 ### 📌 Status & Rencana Selanjutnya
 * **Status:** Tahap 9A selesai 100% — `check` (0 isu), `makemigrations --check --dry-run` (`No changes detected`), `spectacular --file docs/openapi.yaml --validate --fail-on-warn` (lulus), dan `test koperasi` (33 test: 20 lama + 13 API baru) lulus pada MySQL 8.4 Laragon.
 * **Rencana Berikutnya:** Mulai **Tahap 9B** (Scaffold aplikasi React `web/`: Vite + TypeScript + Tailwind v4 + API client + auth) di sesi percakapan baru (gunakan mode perencanaan sesuai `ROADMAP_PENGERJAAN.md`).
+
+---
+
+## 📅 21 November 2026 — Tahap 9B
+
+### 🎯 Fokus / Modul yang Dikerjakan
+* **Tahap 9B:** Scaffold aplikasi frontend React SPA di folder `web/` (Vite 8 + React 19 + TypeScript 5.9 `strict` + Tailwind CSS v4 lewat `@tailwindcss/vite`), generasi tipe TypeScript dari `backend/docs/openapi.yaml` (`openapi-typescript`), klien API `openapi-fetch` dengan *access token* hanya di memori + *single-flight* refresh `401` + `downloadFile`, `AuthProvider` + `ProtectedRoute`/`RoleRoute` + React Router 8, `QueryClient`, utilitas `formatRupiah` (manipulasi string murni) & `formatTanggal` (`Asia/Jakarta`), halaman login/beranda sementara tanpa gaya untuk verifikasi E2E, unit test Vitest, dan `web/README.md`.
+
+### 🛠️ Rincian Perubahan
+1. **Aturan Kerja (`AGENTS.md`):**
+   * Memperbarui Bagian 0.5 dan 0.7 sesuai instruksi pengguna: perubahan berkas `.env` wajib meminta persetujuan pengguna terlebih dahulu beserta alasannya.
+2. **Inisialisasi `web/`, Tailwind v4 & Tooling (`web/package.json`, `vite.config.ts`, `vitest.config.ts`, `tsconfig.*.json`, `eslint.config.js`, `.prettierrc`, `index.html`, `src/styles/index.css`):**
+   * Membuat proyek `web/` dengan `create-vite` (`react-ts`), menyelaraskan `typescript@^5.9.3` agar kompatibel penuh dengan peer `openapi-typescript@7.13.0` (`^5.x`) dan `typescript-eslint@8.73.0` (`<6.1.0`), serta mengganti `oxlint` bawaan template ke ESLint 10 + `eslint-plugin-react-hooks` + `prettier`.
+   * Memasang Tailwind CSS v4.3.5 + `@tailwindcss/vite` di `vite.config.ts` dengan `@import "tailwindcss";` pada `src/styles/index.css` tanpa `tailwind.config.js` maupun `postcss.config.js`.
+   * Mengonfigurasi alias `'@' -> src`, proxy dev `'/api' -> http://127.0.0.1:8000` (tanpa CORS), `tsconfig` mode `strict`, dan skrip `dev`, `build`, `preview`, `lint`, `typecheck`, `test`, `gen:api`.
+3. **Kontrak OpenAPI, Klien API & TanStack Query (`web/src/api/*`):**
+   * Menghasilkan `web/src/api/schema.d.ts` melalui `npm run gen:api` dari `backend/docs/openapi.yaml`.
+   * Membangun `web/src/api/client.ts` (`openapi-fetch`): *access token* hanya pada variabel memori modul (nol penggunaan `localStorage`/`sessionStorage`), `credentials: 'same-origin'`, `baseUrl` dari `window.location.origin`, middleware penyisip `Authorization`, penyimpanan `request.clone()` di `WeakMap` agar retry `POST`/`PUT`/`PATCH` aman, *single-flight* refresh `401` dengan 1x retry, normalisasi galat `{ kode, pesan, detail }` (`ApiError` dengan `{ cause }`), serta helper `downloadFile(path, namaFile)` berbasis `fetch` + `Authorization` + `blob`.
+   * Membangun `web/src/api/queryClient.ts` (`staleTime` 30 detik, `retry: 1` untuk GET kecuali 401/403/404, `retry: false` untuk mutasi) dan `web/src/api/queryKeys.ts`.
+4. **Autentikasi, Guard, Router, Utilitas & Halaman Sederhana (`web/src/app/*`, `web/src/lib/*`, `web/src/features/*`):**
+   * Membangun `authContext.ts` & `AuthProvider.tsx` (pemulihan sesi awal `refresh -> me` aman terhadap StrictMode, `login()`, `logout()`, `refreshUser()`), `guards.tsx` (`ProtectedRoute` & `RoleRoute`), `routes.tsx` (`/login`, `/`, `/pengurus`, `/ketua`, `/anggota`, `/403`, `*`), dan `providers.tsx`.
+   * Membangun `web/src/lib/format.ts` (`formatRupiah` 100% manipulasi string tanpa `parseFloat`/`Number()` dan `formatTanggal` `Intl id-ID` zona `Asia/Jakarta`) serta `web/src/lib/cn.ts`.
+   * Membangun halaman sederhana tanpa gaya: `LoginPage.tsx` (React Hook Form + Zod + galat server), `BerandaSementaraPage.tsx`, `ForbiddenPage.tsx`, dan `NotFoundPage.tsx`.
+5. **Pengujian Unit & Dokumentasi (`web/src/test/*`, `web/README.md`):**
+   * Menambahkan 16 unit test di `format.test.ts` (9 test), `client.test.ts` (4 test termasuk *single-flight* paralel + retry `POST` + gagal refresh), dan `guards.test.tsx` (3 test).
+   * Menulis panduan pengembangan di `web/README.md`.
+
+### 💬 Pesan Commit Terkait
+```text
+docs(config): tambah aturan persetujuan perubahan env
+chore(web): inisialisasi proyek Vite React TS dan Tailwind v4
+feat(api): tambah klien API openapi-fetch dan skema TS
+feat(web): tambah AuthProvider guard router dan util format
+test(web): tambah tes unit format klien API dan guard peran
+docs(web): tambah dokumentasi web dan log tahap 9b
+```
+
+### 🔎 Temuan & PENDING Baru
+* `create-vite v9.3.4` memasang `typescript@7.0.2` dan `oxlint` secara bawaan; diselaraskan ke `typescript@^5.9.3` dan `eslint` + `eslint-plugin-react-hooks` agar sesuai Prompt 9B dan kompatibel dengan peer `openapi-typescript@7.13.0` & `typescript-eslint@8.73.0`.
+* `python manage.py seed_master --with-demo` telah berhasil dijalankan pada database lokal (akun seed `ketua01`, `bendahara01`, `anggota01` siap).
+* Pengujian E2E interaktif melalui subagent browser Chrome tidak dapat terhubung karena *remote debugging* Chrome (`DevToolsActivePort`) tidak aktif; sebagai pengganti, alur proxy live `http://localhost:5173` → `http://127.0.0.1:8000` (`login`, cookie `httpOnly`/`SameSite=Strict`, `/me`, `/refresh` dengan rotasi, `/logout`, `/refresh` 401) telah diverifikasi lewat HTTP client terhadap kedua server yang berjalan, sedangkan verifikasi muat ulang tab di browser disarankan dijalankan langsung oleh pengguna.
+* Tidak ada `PND-xx` baru; aturan bisnis dan backend tidak diubah.
+
+### 📌 Status & Rencana Selanjutnya
+* **Status:** Tahap 9B selesai — `npm run gen:api`, `npm run lint` (0 error, 0 warning), `npm run typecheck` (lulus), `npm run test` (3 file, 16 test lulus), `npm run build` (`✓ built`), serta verifikasi proxy live Vite → Django lulus.
+* **Rencana Berikutnya:** Mulai **Tahap 9C** (Design system 60-30-10, `docs/design-system.md`, komponen UI, AppShell, Login, Dashboard Pengurus, dan Beranda Anggota + 2 endpoint ringkasan) di sesi percakapan baru.
