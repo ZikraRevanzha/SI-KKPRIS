@@ -116,7 +116,9 @@ class PembiayaanController:
     - FR-FIN-06 & BR-05: Pencatatan Realisasi Pencairan off-system & auto-generate Jadwal Angsuran
     """
 
+    # PENDING PND-01: nilai margin contoh, BUKAN ketetapan koperasi.
     DEFAULT_MARGIN_PERSEN = Decimal('1.00')
+    # PENDING PND-05: batas wajib agunan > Rp70 juta terkonfirmasi; syarat agunan lain belum.
     BATAS_AGUNAN_DEFAULT = Decimal('70000000.00')
 
     @staticmethod
@@ -169,6 +171,8 @@ class PembiayaanController:
         """
         Menghitung simulasi pembiayaan syariah metode margin flat berpresisi Decimal(15,2).
         """
+        # PENDING PND-02: Hawalah dihitung dengan rumus margin flat yang sama dengan
+        # Murabahah/Ijarah (tidak ada cabang khusus). Perlakuan Hawalah belum dikonfirmasi; JANGAN diubah.
         pokok = _bersihkan_decimal(harga_pokok)
         persen = _bersihkan_decimal(margin_persen or cls.DEFAULT_MARGIN_PERSEN, '1.00')
         batas = batas_agunan or cls.BATAS_AGUNAN_DEFAULT
@@ -259,6 +263,8 @@ class PembiayaanController:
                 'Pengajuan pembiayaan hanya dapat dilakukan oleh anggota yang berstatus Aktif.'
             )
 
+        # PENDING PND-04: limit pembiayaan per anggota dan batas jumlah pembiayaan aktif
+        # per anggota BELUM divalidasi (rumus/tabel limit belum dikonfirmasi mitra).
         # 1. Validasi Jenis Akad Syariah (Murabahah / Ijarah / Hawalah)
         jenis_akad_id = data_pengajuan.get('jenis_akad_id')
         kode_akad = (data_pengajuan.get('kode_akad') or '').strip()
@@ -626,7 +632,7 @@ class PembiayaanController:
         nominal_bayar = _bersihkan_decimal(
             data_bayar.get('nominal_bayar') or jadwal.jumlah_angsuran
         )
-        potongan_margin = _bersihkan_decimal(data_bayar.get('potongan_margin') or '0.00')
+        potongan_margin = _bersihkan_decimal(data_bayar.get('potongan_margin') or '0.00')  # PENDING PND-08
         metode_bayar = (data_bayar.get('metode_bayar') or MetodeBayarChoices.TUNAI).strip().upper()
 
         with transaction.atomic():
@@ -1057,6 +1063,7 @@ def detail_pembiayaan_view(request, pembiayaan_id: int):
         page_obj = paginator.get_page(request.GET.get('page', 1))
     else:
         # Jika pembiayaan belum dicairkan, tampilkan simulasi pratinjau jadwal angsuran
+        # PENDING PND-07: pratinjau memakai aturan awal angsuran sementara (bulan berikutnya, tgl 24).
         pratinjau_list = []
         tgl_acuan = pembiayaan.tanggal_pengajuan or date.today()
         for ke in range(1, pembiayaan.tenor_bulan + 1):

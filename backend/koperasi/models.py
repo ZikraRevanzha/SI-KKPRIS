@@ -72,6 +72,7 @@ class StatusPembiayaanChoices(models.TextChoices):
 
 
 class JenisAgunanChoices(models.TextChoices):
+    # PENDING PND-05: daftar jenis agunan yang diterima belum dikonfirmasi mitra.
     BPKB_MOTOR = 'BPKB_MOTOR', 'BPKB Kendaraan Roda Dua (Motor)'
     BPKB_MOBIL = 'BPKB_MOBIL', 'BPKB Kendaraan Roda Empat (Mobil)'
     SERTIFIKAT_TANAH_RUMAH = 'SERTIFIKAT_TANAH_RUMAH', 'Sertifikat Tanah / Rumah (SHM/SHGB)'
@@ -106,6 +107,7 @@ class StatusPotonganGajiChoices(models.TextChoices):
 
 
 class KanalNotifikasiChoices(models.TextChoices):
+    # PENDING PND-10: kanal notifikasi (WhatsApp/Email, manual/otomatis) belum dikonfirmasi mitra.
     WHATSAPP = 'WHATSAPP', 'WhatsApp'
     EMAIL = 'EMAIL', 'Email'
 
@@ -517,8 +519,11 @@ class Pembiayaan(models.Model):
     ) -> dict:
         """
         Menghitung simulasi pembiayaan syariah dengan metode margin flat presisi DECIMAL(15,2).
-        margin_persen adalah persentase margin per bulan atau total sesuai ketetapan koperasi.
+        margin_persen = persen dari pokok PER BULAN (flat). Satuan belum dikonfirmasi mitra (PND-01).
         """
+        # PENDING PND-01: besaran dan satuan margin (per bulan/tahun/total) belum dikonfirmasi.
+        # PENDING PND-02: Hawalah memakai rumus yang sama dengan akad lain (belum dikonfirmasi).
+        # PENDING PND-06: pembulatan 2 desimal ROUND_HALF_UP; aturan pembulatan belum dikonfirmasi.
         pokok = Decimal(str(harga_pokok)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         persen = Decimal(str(margin_persen)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         tenor = int(tenor_bulan)
@@ -837,6 +842,8 @@ class JadwalAngsuran(models.Model):
         tanggal_mulai: date = None,
     ) -> list:
         """Meng-generate kartu jadwal angsuran bulanan secara otomatis saat pencairan."""
+        # PENDING PND-07: angsuran pertama = bulan berikutnya setelah tanggal_mulai, jatuh tempo
+        # tanggal 24. Aturan awal angsuran (termasuk cair setelah tanggal 24) belum dikonfirmasi.
         tgl_acuan = tanggal_mulai or date.today()
         pokok = Decimal(str(porsi_pokok)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         margin = Decimal(str(porsi_margin)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
@@ -1083,6 +1090,8 @@ class PembayaranAngsuran(models.Model):
     no_kuitansi = models.CharField(max_length=40, unique=True)
     tanggal_bayar = models.DateTimeField(default=timezone.now)
     nominal_bayar = models.DecimalField(max_digits=15, decimal_places=2)
+    # PENDING PND-08: kolom disebut di SRS v4.0 FR-PMB-07 (muqashah), tetapi besaran/aturan
+    # potongan pelunasan dipercepat belum dikonfirmasi mitra. Jangan dihapus.
     potongan_margin = models.DecimalField(
         max_digits=15,
         decimal_places=2,

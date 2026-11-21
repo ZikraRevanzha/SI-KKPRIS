@@ -243,6 +243,8 @@ class LaporanKeuangan:
         - Total Piutang Pembiayaan Berjalan (Pokok & Margin Belum Lunas)
         - Alokasi Pembagian SHU (Cadangan Koperasi, Jasa Simpanan Anggota, Jasa Pembiayaan, Pengurus & Sosial)
         """
+        # PENDING PND-09: rumus SHU, format neraca, dan daftar akun belum dikonfirmasi mitra
+        # (terkait TBD-05 SRS v4.0). Seluruh perhitungan di fungsi ini bersifat sementara.
         thn = int(tahun_buku or date.today().year)
         akhir_tahun = date(thn, 12, 31)
 
@@ -311,6 +313,7 @@ class LaporanKeuangan:
         )
 
         # Potongan margin (Muqashah) mengurangi pendapatan margin kotor
+        # PENDING PND-08: aturan potongan pelunasan dipercepat belum dikonfirmasi.
         total_muqashah = (
             PembayaranAngsuran.objects.filter(tanggal_bayar__year=thn).aggregate(
                 pot=Sum('potongan_margin')
@@ -323,6 +326,8 @@ class LaporanKeuangan:
         )
 
         # 3. Distribusi Alokasi SHU RAT (Jasa Simpanan 40%, Jasa Pembiayaan 25%, Cadangan Modal 20%, Pengurus & Sosial 15%)
+        # PENDING PND-09: persentase alokasi SHU di bawah TIDAK bersumber dari wawancara/SRS
+        # (nilai contoh). Wajib diganti dengan ketentuan AD/ART KKPRIS setelah dikonfirmasi.
         alokasi_shu = [
             {
                 'komponen': 'Jasa Simpanan Anggota (Modal)',
