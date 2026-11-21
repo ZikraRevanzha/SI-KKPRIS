@@ -5,6 +5,7 @@ Koperasi KKPRIS SMK Negeri 1 Kota Solok
 """
 
 import os
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
@@ -61,6 +62,7 @@ SESSION_COOKIE_SECURE = _keamanan['SESSION_COOKIE_SECURE']
 CSRF_COOKIE_SECURE = _keamanan['CSRF_COOKIE_SECURE']
 SECURE_SSL_REDIRECT = _keamanan['SECURE_SSL_REDIRECT']
 TRUSTED_PROXY = _env_bool('TRUSTED_PROXY', default=False)
+API_DOCS_ENABLED = _env_bool('API_DOCS_ENABLED', default=False)
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -92,7 +94,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-    # Aplikasi Utama SI-KKPRIS (16 Model 3NF & MVT Controllers)
+    # REST API, JWT Blacklist & OpenAPI / Swagger
+    'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
+    'drf_spectacular',
+    # Aplikasi Utama SI-KKPRIS (16 Model 3NF, Services, API v1 & MVT Controllers)
     'koperasi.apps.KoperasiConfig',
 ]
 
@@ -183,3 +189,63 @@ MEDIA_ROOT = BACKEND_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ============================================================================
+# Konfigurasi Django REST Framework, SimpleJWT & drf-spectacular (Tahap 9A)
+# ============================================================================
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
+    'PAGE_SIZE': 20,
+    'DEFAULT_THROTTLE_RATES': {
+        'login': os.getenv('LOGIN_THROTTLE_RATE', '10/min'),
+    },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'COERCE_DECIMAL_TO_STRING': True,
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
+    'REFRESH_TOKEN_LIFETIME': timedelta(minutes=30),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+}
+
+# Pengaturan cookie Refresh Token JWT (httpOnly, SameSite=Strict, Path=/api/v1/auth/)
+JWT_REFRESH_COOKIE_NAME = 'kkpris_refresh'
+JWT_REFRESH_COOKIE_PATH = '/api/v1/auth/'
+JWT_REFRESH_COOKIE_SAMESITE = 'Strict'
+JWT_REFRESH_COOKIE_SECURE = _env_bool('JWT_REFRESH_COOKIE_SECURE', default=not DEBUG)
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'SI-KKPRIS API',
+    'DESCRIPTION': (
+        'REST API Sistem Informasi Pembiayaan dan Koperasi Syariah (SI-KKPRIS) '
+        '— Koperasi KKPRIS SMK Negeri 1 Kota Solok.'
+    ),
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+    'SERVE_AUTHENTICATION': [],
+    'COMPONENT_SPLIT_REQUEST': True,
+    'TAGS': [
+        {'name': 'Autentikasi', 'description': 'Login JWT, refresh cookie, logout, profil aktif, dan ganti password.'},
+        {'name': 'Dashboard', 'description': 'Ringkasan dashboard pengurus dan beranda anggota.'},
+        {'name': 'Anggota', 'description': 'Manajemen keanggotaan dan kliring pengunduran diri.'},
+        {'name': 'Simpanan', 'description': 'Transaksi dan saldo 5 skema simpanan.'},
+        {'name': 'Pembiayaan', 'description': 'Simulasi, pengajuan, agunan, persetujuan kas, dan realisasi.'},
+        {'name': 'Angsuran & Rekap', 'description': 'Angsuran, rekap potong gaji tanggal 24, dan notifikasi tagihan.'},
+        {'name': 'Laporan & Audit', 'description': 'Kuitansi PDF, laporan keuangan RAT, dan jejak audit sistem.'},
+    ],
+}
