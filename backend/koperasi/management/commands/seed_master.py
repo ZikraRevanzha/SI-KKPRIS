@@ -8,6 +8,7 @@ Management command untuk mengisi Master Data awal SI-KKPRIS sesuai SRS v4.0:
 
 from datetime import date
 from decimal import Decimal
+from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -217,7 +218,7 @@ class Command(BaseCommand):
                 'jenis_akad_id': akad_mrb.id,
                 'tanggal_pengajuan': date(2026, 7, 10),
                 'harga_pokok': Decimal('24000000.00'),
-                'margin_persen': Decimal('1.00'),
+                'margin_persen': settings.MARGIN_PERSEN_SEMENTARA,  # PENDING PND-01
                 'tenor_bulan': 12,
                 'no_antrean': 1,
                 'tujuan_pembiayaan': 'Pengadaan Laptop & Perangkat Pembelajaran',
@@ -239,11 +240,16 @@ class Command(BaseCommand):
                 'bukti_transfer_url': 'media/pencairan/bukti_pmb_001.pdf',
             })
             Pembiayaan.perbaruiStatusPembiayaan(pmb.id, StatusPembiayaanChoices.AKTIF, tanggal_cair=date(2026, 7, 12))
+            simulasi_pmb = Pembiayaan.hitungSimulasiMarginFlat(
+                harga_pokok=pmb.harga_pokok,
+                margin_persen=pmb.margin_persen,
+                tenor_bulan=pmb.tenor_bulan,
+            )
             JadwalAngsuran.generateJadwalAngsuran(
                 pembiayaan_id=pmb.id,
                 tenor_bulan=12,
-                porsi_pokok=Decimal('2000000.00'),
-                porsi_margin=Decimal('240000.00'),
+                porsi_pokok=simulasi_pmb['porsi_pokok'],
+                porsi_margin=simulasi_pmb['porsi_margin'],
                 tanggal_mulai=date(2026, 7, 12),
             )
             for ke in range(1, 5):
@@ -251,7 +257,7 @@ class Command(BaseCommand):
                 PembayaranAngsuran.simpanPembayaranAngsuran(jadwal_ke.id, {
                     'bendahara_id': bendahara.id,
                     'no_kuitansi': f'KUI-ANG-2026-00{ke}',
-                    'nominal_bayar': Decimal('2240000.00'),
+                    'nominal_bayar': jadwal_ke.jumlah_angsuran,
                     'metode_bayar': MetodeBayarChoices.POTONG_GAJI,
                     'nomor_referensi': f'RKP-2026-{ke + 7:02d}',
                 })
@@ -374,7 +380,7 @@ class Command(BaseCommand):
                     'jenis_akad_id': akad_ijr.id,
                     'tanggal_pengajuan': date(2026, 11, 10),
                     'harga_pokok': Decimal('18000000.00'),
-                    'margin_persen': Decimal('1.00'),
+                    'margin_persen': settings.MARGIN_PERSEN_SEMENTARA,  # PENDING PND-01
                     'tenor_bulan': 18,
                     'no_antrean': 1,
                     'tujuan_pembiayaan': 'Biaya Pendidikan Studi Lanjut (S2) & Semester',
@@ -398,7 +404,7 @@ class Command(BaseCommand):
                     'jenis_akad_id': akad_mrb.id,
                     'tanggal_pengajuan': date(2026, 11, 12),
                     'harga_pokok': Decimal('75000000.00'),
-                    'margin_persen': Decimal('1.00'),
+                    'margin_persen': settings.MARGIN_PERSEN_SEMENTARA,  # PENDING PND-01
                     'tenor_bulan': 30,
                     'no_antrean': 2,
                     'tujuan_pembiayaan': 'Renovasi Rumah Tinggal (> Rp 70 Juta dengan Agunan BPKB)',
@@ -434,31 +440,36 @@ class Command(BaseCommand):
             anggota_siti = Anggota.objects.filter(no_anggota='KKP-2026-002').first()
             if pmb_001 and anggota_siti:
                 jadwal_ke_5 = JadwalAngsuran.objects.filter(pembiayaan=pmb_001, angsuran_ke=5).first()
+                angsuran_ke_5 = jadwal_ke_5.jumlah_angsuran if jadwal_ke_5 else Decimal('0.00')
+                simpanan_wajib = Decimal('150000.00')
                 rekap_nov = RekapPotongGaji.buatHeaderRekap('2026-11', bendahara.id, kode_rekap='RKP-202611')
                 DetailRekapPotongGaji.simpanRincianRekapAnggota(rekap_nov.id, [
                     {
                         'anggota_id': anggota_budi.id,
                         'jadwal_angsuran_id': jadwal_ke_5.id if jadwal_ke_5 else None,
-                        'nominal_simpanan_wajib': Decimal('150000.00'),
+                        'nominal_simpanan_wajib': simpanan_wajib,
                         'nominal_simpanan_sukarela': Decimal('75000.00'),
-                        'nominal_angsuran': Decimal('2240000.00'),
-                        'subtotal_potongan': Decimal('2465000.00'),
+                        'nominal_angsuran': angsuran_ke_5,
+                        'subtotal_potongan': simpanan_wajib + Decimal('75000.00') + angsuran_ke_5,
                     },
                     {
                         'anggota_id': anggota_siti.id,
                         'jadwal_angsuran_id': None,
-                        'nominal_simpanan_wajib': Decimal('150000.00'),
+                        'nominal_simpanan_wajib': simpanan_wajib,
                         'nominal_simpanan_sukarela': Decimal('50000.00'),
                         'nominal_angsuran': Decimal('0.00'),
-                        'subtotal_potongan': Decimal('200000.00'),
+                        'subtotal_potongan': simpanan_wajib + Decimal('50000.00'),
                     },
                 ])
-                rekap_nov.total_simpanan_wajib = Decimal('300000.00')
-                rekap_nov.total_angsuran = Decimal('2240000.00')
-                rekap_nov.total_tagihan = Decimal('2665000.00')
+                rekap_nov.total_simpanan_wajib = simpanan_wajib * 2
+                rekap_nov.total_angsuran = angsuran_ke_5
+                rekap_nov.total_tagihan = (
+                    simpanan_wajib * 2 + Decimal('75000.00') + Decimal('50000.00') + angsuran_ke_5
+                )
                 rekap_nov.save()
 
                 if jadwal_ke_5:
+                    angsuran_teks = f'{angsuran_ke_5:,.2f}'.replace(',', '_').replace('.', ',').replace('_', '.')
                     NotifikasiTagihan.simpanLogNotifikasi({
                         'anggota_id': anggota_budi.id,
                         'jadwal_angsuran_id': jadwal_ke_5.id,
@@ -467,7 +478,7 @@ class Command(BaseCommand):
                         'tujuan_kirim': anggota_budi.no_hp,
                         'isi_pesan': (
                             'Pengingat tagihan tanggal 10 Koperasi KKPRIS: Angsuran ke-5 PMB-2026-001 '
-                            'sebesar Rp 2.240.000 + Simpanan Wajib Rp 150.000.'
+                            f'sebesar Rp {angsuran_teks} + Simpanan Wajib Rp 150.000.'
                         ),
                         'status_kirim': StatusKirimNotifikasiChoices.TERKIRIM,
                     })

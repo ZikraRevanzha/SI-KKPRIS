@@ -8,7 +8,7 @@ from django.contrib.staticfiles.finders import find
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.template.loader import get_template
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from koperasi.models import (
     Agunan,
     Anggota,
@@ -923,6 +923,25 @@ class SIKKPRISModelsTestCase(TestCase):
         self.assertEqual(resp_audit.status_code, 200)
         self.assertTemplateUsed(resp_audit, 'laporan/audit_trail_log.html')
         self.assertContains(resp_audit, 'EKSPOR_LAPORAN_KEUANGAN')
+
+    @override_settings(MARGIN_PERSEN_SEMENTARA=Decimal('1.50'))
+    def test_11_simulasi_pakai_margin_sementara_dari_settings(self):
+        """Memastikan simulasi pembiayaan membaca settings.MARGIN_PERSEN_SEMENTARA (PENDING PND-01)."""
+        from koperasi.controllers.pembiayaan_controller import PembiayaanController
+
+        self.assertEqual(PembiayaanController.ambilMarginSementara(), Decimal('1.50'))
+
+        hasil = PembiayaanController.simulasiPembiayaan(
+            harga_pokok=Decimal('10000000.00'),
+            tenor_bulan=10,
+        )
+        self.assertEqual(hasil['margin_persen'], Decimal('1.50'))
+        self.assertEqual(hasil['porsi_pokok'], Decimal('1000000.00'))
+        self.assertEqual(hasil['porsi_margin'], Decimal('150000.00'))
+        self.assertEqual(hasil['total_margin'], Decimal('1500000.00'))
+        self.assertEqual(hasil['total_kewajiban'], Decimal('11500000.00'))
+        self.assertEqual(hasil['angsuran_bulanan'], Decimal('1150000.00'))
+
 
 
 

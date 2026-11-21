@@ -5,7 +5,9 @@ Koperasi KKPRIS SMK Negeri 1 Kota Solok
 """
 
 import os
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -34,6 +36,18 @@ ALLOWED_HOSTS = [
     for host in os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
     if host.strip()
 ]
+
+# Aturan bisnis sementara
+# PENDING PND-01: margin contoh, BUKAN ketetapan koperasi. Satuan sementara: persen dari pokok
+# PER BULAN (flat). Dipakai bila pengajuan tidak menyertakan margin_persen.
+try:
+    MARGIN_PERSEN_SEMENTARA = Decimal(
+        os.getenv('MARGIN_PERSEN_SEMENTARA') or '1.00'
+    ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+except InvalidOperation as exc:
+    raise ImproperlyConfigured(
+        'MARGIN_PERSEN_SEMENTARA harus berupa angka desimal, contoh: 1.00'
+    ) from exc
 
 # Application definition
 INSTALLED_APPS = [

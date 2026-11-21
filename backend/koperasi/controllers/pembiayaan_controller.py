@@ -116,10 +116,16 @@ class PembiayaanController:
     - FR-FIN-06 & BR-05: Pencatatan Realisasi Pencairan off-system & auto-generate Jadwal Angsuran
     """
 
-    # PENDING PND-01: nilai margin contoh, BUKAN ketetapan koperasi.
-    DEFAULT_MARGIN_PERSEN = Decimal('1.00')
     # PENDING PND-05: batas wajib agunan > Rp70 juta terkonfirmasi; syarat agunan lain belum.
     BATAS_AGUNAN_DEFAULT = Decimal('70000000.00')
+
+    @staticmethod
+    def ambilMarginSementara() -> Decimal:
+        """
+        Margin sementara dari settings.MARGIN_PERSEN_SEMENTARA (env).
+        PENDING PND-01: nilai contoh, BUKAN ketetapan koperasi.
+        """
+        return settings.MARGIN_PERSEN_SEMENTARA
 
     @staticmethod
     def generateNoPembiayaan(tahun: int = None) -> str:
@@ -174,7 +180,9 @@ class PembiayaanController:
         # PENDING PND-02: Hawalah dihitung dengan rumus margin flat yang sama dengan
         # Murabahah/Ijarah (tidak ada cabang khusus). Perlakuan Hawalah belum dikonfirmasi; JANGAN diubah.
         pokok = _bersihkan_decimal(harga_pokok)
-        persen = _bersihkan_decimal(margin_persen or cls.DEFAULT_MARGIN_PERSEN, '1.00')
+        persen = _bersihkan_decimal(
+            cls.ambilMarginSementara() if margin_persen in (None, '') else margin_persen
+        )
         batas = batas_agunan or cls.BATAS_AGUNAN_DEFAULT
         hasil = Pembiayaan.hitungSimulasiMarginFlat(
             harga_pokok=pokok,
@@ -296,9 +304,9 @@ class PembiayaanController:
                 f'Tenor pembiayaan untuk akad {akad.get_nama_display()} wajib berada pada rentang 1 s.d. {akad.tenor_maks_bulan} bulan.'
             )
 
+        raw_margin = data_pengajuan.get('margin_persen')
         margin_persen = _bersihkan_decimal(
-            data_pengajuan.get('margin_persen') or cls.DEFAULT_MARGIN_PERSEN,
-            '1.00',
+            cls.ambilMarginSementara() if raw_margin in (None, '') else raw_margin
         )
         tujuan_pembiayaan = (data_pengajuan.get('tujuan_pembiayaan') or '').strip()
         if not tujuan_pembiayaan:
@@ -1022,7 +1030,7 @@ def ajukan_pembiayaan_view(request):
         'hari_ini': hari_ini,
         'periode_buka': periode_buka,
         'no_antrean_berikutnya': PembiayaanController.hitungNoAntrean(hari_ini),
-        'default_margin_persen': PembiayaanController.DEFAULT_MARGIN_PERSEN,
+        'default_margin_persen': PembiayaanController.ambilMarginSementara(),  # PENDING PND-01
         'batas_agunan': PembiayaanController.BATAS_AGUNAN_DEFAULT,
         'form_post': request.POST if request.method == 'POST' else {},
     }
