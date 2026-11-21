@@ -13,7 +13,7 @@ Selaras dengan:
 """
 
 from datetime import date
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -32,10 +32,8 @@ from koperasi.controllers.auth_controller import (
     login_wajib,
     peran_wajib,
 )
-from koperasi.controllers.pembiayaan_controller import (
-    PembiayaanController,
-    _bersihkan_decimal,
-)
+from koperasi.controllers.pembiayaan_controller import PembiayaanController
+from koperasi.utils import bersihkan_rupiah
 from koperasi.models import (
     Anggota,
     AuditTrailLog,
@@ -245,7 +243,7 @@ class RekapNotifikasiController:
         if rekap.status_rekap == StatusRekapGajiChoices.LUNAS_KOLEKTIF:
             raise ValidationError('Rekap sudah berstatus Lunas Kolektif dan tidak dapat diubah.')
 
-        nom_toko = _bersihkan_decimal(nominal_belanja_toko)
+        nom_toko = bersihkan_rupiah(nominal_belanja_toko, default='0.00')
         if nom_toko < Decimal('0.00'):
             raise ValidationError('Nominal potongan belanja toko / sukarela tidak boleh negatif.')
 

@@ -1059,6 +1059,58 @@ class SIKKPRISModelsTestCase(TestCase):
         self.assertEqual(baris_akhir['angsuran_ke'], 7)
         self.assertEqual(baris_akhir['jumlah_angsuran'], Decimal('1528571.42'))
 
+    def test_14_parser_nominal_rupiah_dan_persen(self):
+        """Memastikan bersihkan_rupiah dan bersihkan_persen menangani pemisah ribuan & desimal dengan tepat."""
+        from koperasi.controllers.pembiayaan_controller import PembiayaanController
+        from koperasi.controllers.simpanan_controller import SimpananController
+        from koperasi.utils import bersihkan_persen, bersihkan_rupiah
+
+        tabel_rupiah = [
+            ('70.000', Decimal('70000.00')),
+            ('500.000', Decimal('500000.00')),
+            ('1.500.000', Decimal('1500000.00')),
+            ('2.500,50', Decimal('2500.50')),
+            ('Rp 150.000', Decimal('150000.00')),
+            ('1500000', Decimal('1500000.00')),
+            ('150000.50', Decimal('150000.50')),
+        ]
+        for raw, expected in tabel_rupiah:
+            with self.subTest(rupiah=raw):
+                self.assertEqual(bersihkan_rupiah(raw), expected)
+
+        for invalid in ('1,500,000', 'abc', '1.23.45', 'NaN'):
+            with self.subTest(rupiah_invalid=invalid):
+                with self.assertRaises(ValidationError):
+                    bersihkan_rupiah(invalid)
+
+        self.assertEqual(bersihkan_persen('1.5'), Decimal('1.50'))
+        self.assertEqual(bersihkan_persen('1,5'), Decimal('1.50'))
+        self.assertEqual(bersihkan_persen('1.500'), Decimal('1.50'))
+        with self.assertRaises(ValidationError):
+            bersihkan_persen('1.5,0')
+
+        # Pastikan controller memakai parser baru (mis. "70.000" -> Rp 70.000,00, bukan 70,00)
+        sim = PembiayaanController.simulasiPembiayaan(
+            harga_pokok='500.000',
+            tenor_bulan=10,
+            margin_persen='1,5',
+        )
+        self.assertEqual(sim['harga_pokok'], Decimal('500000.00'))
+        self.assertEqual(sim['margin_persen'], Decimal('1.50'))
+
+        shr = JenisSimpanan.objects.get(kode='SHR')
+        mutasi = SimpananController.catatSetorTarikSimpanan(
+            bendahara=self.bendahara,
+            data_input={
+                'anggota_id': self.anggota.id,
+                'jenis_simpanan_id': shr.id,
+                'jenis_transaksi': 'SETOR',
+                'metode_bayar': 'TUNAI',
+                'nominal': '70.000',
+            },
+        )
+        self.assertEqual(mutasi.nominal, Decimal('70000.00'))
+
 
 
 

@@ -19,7 +19,7 @@ Selaras dengan:
 
 import os
 from datetime import date
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -65,6 +65,7 @@ from koperasi.models import (
     StatusPembiayaanChoices,
     TransaksiSimpanan,
 )
+from koperasi.utils import bersihkan_persen, bersihkan_rupiah
 
 
 def _simpan_berkas_pembiayaan(berkas, subfolder: str, prefix: str) -> str:
@@ -78,25 +79,6 @@ def _simpan_berkas_pembiayaan(berkas, subfolder: str, prefix: str) -> str:
     os.makedirs(os.path.dirname(full_path), exist_ok=True)
     saved_path = default_storage.save(rel_path, berkas)
     return f"media/{saved_path}".replace('\\', '/')
-
-
-def _bersihkan_decimal(raw_val, default: str = '0.00') -> Decimal:
-    """Mengonversi string angka (mendukung pemisah ribuan titik) menjadi Decimal(15,2)."""
-    if raw_val is None or raw_val == '':
-        return Decimal(default)
-    if isinstance(raw_val, Decimal):
-        return raw_val.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-    teks = str(raw_val).strip()
-    if '.' in teks and ',' in teks:
-        teks = teks.replace('.', '').replace(',', '.')
-    elif teks.count('.') > 1:
-        teks = teks.replace('.', '')
-    elif ',' in teks:
-        teks = teks.replace(',', '.')
-    try:
-        return Decimal(teks).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-    except (InvalidOperation, ValueError):
-        raise ValidationError(f'Format nominal angka tidak valid: {raw_val}')
 
 
 # ============================================================================
@@ -179,8 +161,8 @@ class PembiayaanController:
         """
         # PENDING PND-02: Hawalah dihitung dengan rumus margin flat yang sama dengan
         # Murabahah/Ijarah (tidak ada cabang khusus). Perlakuan Hawalah belum dikonfirmasi; JANGAN diubah.
-        pokok = _bersihkan_decimal(harga_pokok)
-        persen = _bersihkan_decimal(
+        pokok = bersihkan_rupiah(harga_pokok, default='0.00')
+        persen = bersihkan_persen(
             cls.ambilMarginSementara() if margin_persen in (None, '') else margin_persen
         )
         batas = batas_agunan or cls.BATAS_AGUNAN_DEFAULT
@@ -216,7 +198,7 @@ class PembiayaanController:
 
         raw_taksiran = data_agunan.get('nilai_taksiran')
         nilai_taksiran = (
-            _bersihkan_decimal(raw_taksiran)
+            bersihkan_rupiah(raw_taksiran)
             if raw_taksiran
             else pembiayaan.harga_pokok
         )
@@ -290,7 +272,10 @@ class PembiayaanController:
             raise ValidationError('Skema Akad Syariah (Murabahah / Ijarah / Hawalah) wajib dipilih.')
 
         # 2. Validasi Nominal Pokok & Tenor (Maks. 72 Bulan)
-        harga_pokok = _bersihkan_decimal(data_pengajuan.get('harga_pokok') or data_pengajuan.get('nominal'))
+        harga_pokok = bersihkan_rupiah(
+            data_pengajuan.get('harga_pokok') or data_pengajuan.get('nominal'),
+            default='0.00',
+        )
         if harga_pokok <= Decimal('0.00'):
             raise ValidationError('Nominal pembiayaan harus lebih besar dari Rp 0.')
 
@@ -305,7 +290,7 @@ class PembiayaanController:
             )
 
         raw_margin = data_pengajuan.get('margin_persen')
-        margin_persen = _bersihkan_decimal(
+        margin_persen = bersihkan_persen(
             cls.ambilMarginSementara() if raw_margin in (None, '') else raw_margin
         )
         tujuan_pembiayaan = (data_pengajuan.get('tujuan_pembiayaan') or '').strip()
@@ -555,7 +540,7 @@ class PembiayaanController:
 
         raw_nominal_cair = data_realisasi.get('nominal_cair')
         nominal_cair = (
-            _bersihkan_decimal(raw_nominal_cair)
+            bersihkan_rupiah(raw_nominal_cair)
             if raw_nominal_cair
             else pembiayaan.harga_pokok
         )
@@ -631,10 +616,12 @@ class PembiayaanController:
         if not no_kuitansi:
             no_kuitansi = f"KUI-ANG-{jadwal.pembiayaan.id}-{jadwal.angsuran_ke:02d}-{timezone.now():%H%M%S}"
 
-        nominal_bayar = _bersihkan_decimal(
+        nominal_bayar = bersihkan_rupiah(
             data_bayar.get('nominal_bayar') or jadwal.jumlah_angsuran
         )
-        potongan_margin = _bersihkan_decimal(data_bayar.get('potongan_margin') or '0.00')  # PENDING PND-08
+        potongan_margin = bersihkan_rupiah(
+            data_bayar.get('potongan_margin'), default='0.00'
+        )  # PENDING PND-08
         metode_bayar = (data_bayar.get('metode_bayar') or MetodeBayarChoices.TUNAI).strip().upper()
 
         with transaction.atomic():

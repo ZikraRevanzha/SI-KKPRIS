@@ -12,7 +12,7 @@ Selaras dengan:
 """
 
 from datetime import date
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -40,6 +40,7 @@ from koperasi.models import (
     StatusAnggotaChoices,
     TransaksiSimpanan,
 )
+from koperasi.utils import bersihkan_rupiah
 
 
 def _hitung_saldo_sebelum(ts: TransaksiSimpanan) -> Decimal:
@@ -143,7 +144,6 @@ class SimpananController:
         jenis_transaksi = (data_input.get('jenis_transaksi') or '').strip().upper()
         metode_bayar = (data_input.get('metode_bayar') or MetodeBayarChoices.TUNAI).strip().upper()
         keterangan = (data_input.get('keterangan') or '').strip()
-        raw_nominal = str(data_input.get('nominal') or '0').replace('.', '').replace(',', '.').strip()
 
         if not anggota_id or not jenis_simpanan_id:
             raise ValidationError('Anggota dan Jenis Simpanan wajib dipilih.')
@@ -154,10 +154,7 @@ class SimpananController:
         if metode_bayar not in MetodeBayarChoices.values:
             metode_bayar = MetodeBayarChoices.TUNAI
 
-        try:
-            nominal = Decimal(raw_nominal).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        except (InvalidOperation, ValueError):
-            raise ValidationError('Jumlah nominal transaksi tidak valid.')
+        nominal = bersihkan_rupiah(data_input.get('nominal'), default='0.00')
 
         if nominal <= Decimal('0.00'):
             raise ValidationError('Jumlah nominal transaksi harus lebih besar dari Rp 0.')
