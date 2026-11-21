@@ -1323,6 +1323,24 @@ class SIKKPRISModelsTestCase(TestCase):
         self.assertFalse(dev_cfg['CSRF_COOKIE_SECURE'])
         self.assertFalse(dev_cfg['SECURE_SSL_REDIRECT'])
 
+    def test_20_ambil_ip_klien_hormati_trusted_proxy(self):
+        """Memastikan _ambil_ip_klien memakai REMOTE_ADDR kecuali TRUSTED_PROXY=True."""
+        from django.test import RequestFactory
+        from koperasi.controllers.auth_controller import _ambil_ip_klien
+
+        rf = RequestFactory()
+        req = rf.get(
+            '/login/',
+            REMOTE_ADDR='10.0.0.5',
+            HTTP_X_FORWARDED_FOR='203.0.113.9, 10.0.0.1',
+        )
+
+        with override_settings(TRUSTED_PROXY=False):
+            self.assertEqual(_ambil_ip_klien(req), '10.0.0.5')
+
+        with override_settings(TRUSTED_PROXY=True):
+            self.assertEqual(_ambil_ip_klien(req), '203.0.113.9')
+
 
 
 

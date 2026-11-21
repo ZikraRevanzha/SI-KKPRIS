@@ -7,6 +7,7 @@ serta pencatatan otomatis AuditTrailLog.
 from datetime import date
 from decimal import Decimal
 from functools import wraps
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from django.db.models import Count, Q, Sum
@@ -32,10 +33,14 @@ from koperasi.models import (
 
 
 def _ambil_ip_klien(request) -> str:
-    """Mengambil alamat IP pengguna dari request HTTP untuk AuditTrailLog."""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        return x_forwarded_for.split(',')[0].strip()[:45]
+    """
+    Mengambil alamat IP pengguna untuk AuditTrailLog.
+    Mempercayai REMOTE_ADDR secara baku; X-Forwarded-For hanya dibaca jika settings.TRUSTED_PROXY=True.
+    """
+    if getattr(settings, 'TRUSTED_PROXY', False):
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            return x_forwarded_for.split(',')[0].strip()[:45]
     return (request.META.get('REMOTE_ADDR') or '127.0.0.1')[:45]
 
 
