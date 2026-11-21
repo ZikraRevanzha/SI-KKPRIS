@@ -274,3 +274,63 @@ chore(db): ganti data seed dengan data dummy
 ### 📌 Status & Rencana Selanjutnya
 * **Status:** Tahap 8A selesai 100% — `check`, `makemigrations --check --dry-run`, dan `test koperasi` (12 test) lulus pada MySQL 8.4 Laragon (`Ran 12 tests in 11.895s — OK`).
 * **Rencana Berikutnya:** Mulai **Tahap 8B** (perbaikan teknis backend) di sesi percakapan baru.
+
+---
+
+## 📅 21 November 2026 — Tahap 8B
+
+### 🎯 Fokus / Modul yang Dikerjakan
+* **Tahap 8B:** Perbaikan teknis backend tanpa mengubah aturan bisnis yang berstatus `PENDING`: penyerapan sisa pembulatan di angsuran terakhir, pemisahan parser rupiah & persen, penghapusan `float()` pada ekspor Excel, kunci baris `select_for_update()` untuk saldo/pembayaran/persetujuan/realisasi, pemisahan template PDF kuitansi, pengerasan konfigurasi & keamanan (`PyMySQL`, PBKDF2, `SECRET_KEY`/`DEBUG`, `REMOTE_ADDR`), serta pengujian penuh pada MySQL 8.4 Laragon. Item 6 dilewati sesuai Addendum Tahap 8 (template Django lama dibekukan).
+
+### 🛠️ Rincian Perubahan
+1. **Item 1 — Angsuran terakhir menyerap sisa pembulatan (`models.py`, `pembiayaan_controller.py`, `seed_master.py`, `tests.py`):**
+   * Membuat fungsi sumber tunggal `Pembiayaan.hitungRincianAngsuran(harga_pokok, margin_persen, tenor_bulan)` dengan angsuran ke-N menyerap sisa pembulatan pokok (`pokok - porsi_pokok_reguler * (N - 1)`).
+   * Memakai fungsi tersebut di `Pembiayaan.hitungSimulasiMarginFlat`, `JadwalAngsuran.generateJadwalAngsuran` (menambahkan parameter `harga_pokok` & `margin_persen`), `PembiayaanController.catatRealisasiPencairan`, `_rakit_baris_pembiayaan`, pratinjau jadwal di `detail_pembiayaan_view`, dan `seed_master.py`.
+   * Menambahkan `test_13_invarian_pembulatan_angsuran_terakhir` (kasus a: 10 jt / 7 bln, b: 70 jt / 72 bln, c: 25 jt / 11 bln, d: margin 0% 5 jt / 10 bln + pratinjau detail pembiayaan).
+2. **Item 2 — Parser nominal rupiah & persen (`utils.py`, `pembiayaan_controller.py`, `simpanan_controller.py`, `rekap_notifikasi_controller.py`, `tests.py`):**
+   * Membuat modul `backend/koperasi/utils.py` dengan `bersihkan_rupiah(raw)` (pola ribuan `^\d{1,3}(\.\d{3})+$`, koma sebagai desimal, hapus `Rp` & spasi) dan `bersihkan_persen(raw)` (titik/koma selalu desimal, bukan ribuan).
+   * Memindahkan seluruh pemanggil di `pembiayaan_controller.py`, `simpanan_controller.py`, dan `rekap_notifikasi_controller.py` ke utilitas baru, serta menghapus `_bersihkan_decimal`.
+   * Menambahkan `test_14_parser_nominal_rupiah_dan_persen` mencakup seluruh tabel uji.
+3. **Item 3 — Penghapusan `float()` pada ekspor Excel (`simpanan_controller.py`, `pembiayaan_controller.py`, `rekap_notifikasi_controller.py`, `laporan_bukti_controller.py`, `tests.py`):**
+   * Mengganti seluruh `float(...)` pada keempat ekspor `.xlsx` dengan menulis `Decimal` langsung ke sel `openpyxl` beserta `number_format = '#,##0.00'` (termasuk sheet `Neraca & SHU` di `laporan_bukti_controller.py`).
+   * Menambahkan `test_15_ekspor_excel_presisi_numerik_decimal` untuk membuka `.xlsx` hasil ekspor dan memverifikasi nilai numerik serta format selnya.
+4. **Item 4 — Kunci baris `select_for_update()` (`models.py`, `simpanan_controller.py`, `pembiayaan_controller.py`, `rekap_notifikasi_controller.py`, `tests.py`):**
+   * Membungkus transaksi simpanan dengan `transaction.atomic()` + `Anggota.objects.select_for_update().get(...)` sebelum membaca saldo berjalan.
+   * Mengunci `JadwalAngsuran` (`select_for_update`) pada `PembayaranAngsuran.simpanPembayaranAngsuran` dan `PembiayaanController.catatPembayaranAngsuran` serta menolak pembayaran ulang bila sudah `LUNAS`.
+   * Mengunci `Pembiayaan` pada `verifikasiBendahara`, `setujuiPengeluaranKas`, `catatRealisasiPencairan`, dan `RealisasiPencairan.simpanRealisasiPencairan` serta mengecek status di dalam kunci; mengunci `RekapPotongGaji` pada `konfirmasiPelunasanKolektif`.
+   * Menambahkan `test_16_kunci_baris_tolak_pembayaran_dan_aksi_ganda`.
+5. **Item 5 — Template PDF kuitansi terpisah (`frontend/templates/simpanan/`, `frontend/templates/angsuran/`, `laporan_bukti_controller.py`, `tests.py`):**
+   * Mengekstrak isi kuitansi ke partial `simpanan/_kuitansi_isi.html` dan `angsuran/_kuitansi_isi.html`.
+   * Membuat template PDF baru `simpanan/kuitansi_simpanan_pdf.html` dan `angsuran/kuitansi_angsuran_pdf.html` tanpa tombol/emoji mengikuti pola `rekap_potong_gaji_pdf.html`, memperbarui template layar `*_print.html` memakai partial + toolbar, dan mengarahkan `LaporanBuktiController.cetakBuktiTransaksi` ke template `*_pdf.html`.
+   * Menambahkan `test_17_kuitansi_pdf_terpisah_dari_template_layar` menggunakan `pypdf.PdfReader`.
+6. **Item 6 — Dilewati** sesuai Addendum Tahap 8 (`frontend/templates/` MVT dibekukan).
+7. **Item 7 — Konfigurasi & keamanan (`requirements.txt`, `settings.py`, `.env.example`, `auth_controller.py`, `tests.py`):**
+   * Menghapus `PyMySQL==1.2.4` dari `backend/requirements.txt` (mempertahankan `mysqlclient==2.3.1`).
+   * Menetapkan `AUTH_PASSWORD_HASHERS` hanya `PBKDF2PasswordHasher` (`test_18_konfigurasi_hasher_hanya_pbkdf2`).
+   * Mengubah default `DEBUG` menjadi `False`, mewajibkan `SECRET_KEY` dari env (menghapus kunci bawaan di kode), dan mengaktifkan `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SECURE_SSL_REDIRECT` otomatis saat `DEBUG=False` dengan dukungan override env (`test_19_konfigurasi_debug_dan_secret_key_wajib_env`).
+   * Memperbarui `_ambil_ip_klien` di `auth_controller.py` agar memakai `REMOTE_ADDR` dan hanya membaca `X-Forwarded-For` bila `settings.TRUSTED_PROXY=True` (default `False`) (`test_20_ambil_ip_klien_hormati_trusted_proxy`).
+   * Memverifikasi `.gitignore` sudah sesuai `AGENTS.md` Bagian 3.
+8. **Item 8 — Pengujian penuh di MySQL:**
+   * Menjalankan `python manage.py check`, `python manage.py makemigrations --check --dry-run`, dan `python manage.py test koperasi -v 2` pada MySQL 8.4 Laragon (`test_si_kkpris`): seluruh 20 test lulus (`Ran 20 tests in 16.927s — OK`).
+
+### 💬 Pesan Commit Terkait
+```text
+fix(pembiayaan): serap sisa pembulatan di angsuran akhir
+fix(pembiayaan): perbaiki parser nominal rupiah
+fix(export): hapus float pada ekspor Excel
+fix(simpanan): kunci baris saat hitung saldo
+fix(pdf): pisahkan template kuitansi PDF
+chore(config): hapus PyMySQL dari requirements
+fix(auth): gunakan hasher PBKDF2 saja
+chore(config): wajibkan SECRET_KEY dari env
+fix(security): percayai IP dari REMOTE_ADDR
+docs(config): perbarui log pengerjaan tahap 8b
+```
+
+### 🔎 Temuan & PENDING Baru
+* `rekap_potong_gaji_pdf.html` dan `laporan_keuangan_pdf.html` masih memunculkan peringatan minor `xhtml2pdf`: `Ignoring CSS properties xhtml2pdf does not implement: border-collapse` (tidak mengganggu hasil PDF, di luar lingkup Item 5 yang berfokus pada kuitansi).
+* `backend/koperasi/controllers/anggota_controller.py:125` masih memiliki password bawaan `'Kkpris2026!'` untuk registrasi anggota baru tanpa input password (sudah dicatat pada temuan Tahap 8A; di luar lingkup Tahap 8B).
+
+### 📌 Status & Rencana Selanjutnya
+* **Status:** Tahap 8B selesai 100% — `check`, `makemigrations --check --dry-run`, `grep float(` (kosong), `grep pymysql` (kosong), dan `test koperasi` (20 test) lulus pada MySQL 8.4 Laragon (`Ran 20 tests in 16.927s — OK`).
+* **Rencana Berikutnya:** Mulai **Tahap 9A** (Fondasi API: `Pengguna` custom `AbstractBaseUser`, DRF, JWT cookie, Swagger) di sesi percakapan baru (gunakan mode perencanaan sesuai `ROADMAP_PENGERJAAN.md`).
